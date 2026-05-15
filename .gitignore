@@ -2,6 +2,10 @@
 .claude-handoff.md
 .claude/settings.local.json
 
+# Windows default-named drafts
+Text Document*.txt
+Новый текстовый документ*.txt
+
 # OS
 .DS_Store
 Thumbs.db

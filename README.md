@@ -1,9 +1,9 @@
-# Yoga-Filippov
+# FeelYoga
 
-Сайт для преподавателя йоги Михаила Филипова.
+Платформа онлайн-курсов для преподавателя йоги Михаила Филипова.
 
 ## Статус
-Pre-discovery. Стек и домен не зафиксированы.
+Discovery → старт dev-инстанса. Движок — Orbita. Домен заказчик ещё не выбрал.
 
 ## Структура
 - `CLAUDE.md` — контекст проекта для Claude Code
@@ -14,4 +14,7 @@ Pre-discovery. Стек и домен не зафиксированы.
 TBD после выбора стека.
 
 ## Деплой
-TBD. Целевое окружение — debianOCR за nginx-proxy.
+- **Dev:** debianOCR за nginx-proxy (временный поддомен)
+- **Прод:** VPS Timeweb в РФ-зоне (после стабилизации)
+- Движок: [Orbita](https://github.com/bezumkin/orbita) (self-hosted Patreon-аналог)
+- Платежи: Tbank (ИП заказчика)

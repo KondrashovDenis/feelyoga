@@ -1,6 +1,7 @@
-# Yoga-Filippov
+# FeelYoga
 
 Платформа онлайн-курсов для преподавателя йоги Михаила Филипова.
+Рабочее название проекта/бренда — **FeelYoga**. Финальный домен заказчик ещё не выбрал.
 
 ## Статус
 Discovery → выбор пути деплоя. Заказчик хочет онлайн-инструмент для своих учеников
@@ -19,7 +20,7 @@ Discovery → выбор пути деплоя. Заказчик хочет он
 - **Хостинг dev:** debianOCR за nginx-proxy (временно, для разработки)
 - **Хостинг прод:** VPS Timeweb в РФ-зоне (коммерческий проект, не должен зависеть от сервера Андрея).
   Перенос: `docker compose down` → scp `./docker/mariadb` + `./upload` + `.env` + код → `up` на VPS.
-- **Git:** локально D:\Claude\Yoga-Filippov → после выбора домена создаём bare-репо на debianOCR + remote на github.com/KondrashovDenis/
+- **Git:** локально `D:\Claude\FeelYoga` → после выбора домена создаём bare-репо на debianOCR + remote `github.com/KondrashovDenis/feelyoga`
 
 ## ТЗ от заказчика (Михаил)
 Прямая цитата: *«главное чтобы хорошо открывались видосики и качество было и чтобы оплата как часы работала. Все остальное нюансы и максимально просто»*.
@@ -63,7 +64,7 @@ Discovery → выбор пути деплоя. Заказчик хочет он
 4. ⏳ Ждать Tbank-эквайринг → `PAYMENT_TBANK_TERMINAL` + `PAYMENT_TBANK_PASSWORD`
 5. Создать bare-репо на debianOCR + remote на github.com/KondrashovDenis/
 6. Клонировать Orbita (или форкнуть mentortube) → `~/projects/yoga-filippov/` на debianOCR
-7. Конфиг: `COMPOSE_PROJECT_NAME=yoga-filippov`, `container_name: yoga-filippov-nginx`, network alias (избежать коллизии с mentortube/sochispirit/momarus в общей nginx-proxy сети)
+7. Конфиг: `COMPOSE_PROJECT_NAME=feelyoga`, `container_name: feelyoga-nginx`, network alias (избежать коллизии с mentortube/sochispirit/momarus в общей nginx-proxy сети)
 8. Подключить Tbank, протестировать оплату
 9. Залить 10 видео Михаила, проверить HLS-транскодинг
 10. Кастомизация frontend под "белый минимализм" с хорошей типографикой
