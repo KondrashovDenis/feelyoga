@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>filippov.yoga · вариант Sans / Onest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-alt: #f4f3f0;
+    --fg: #0e0e0c;
+    --muted: #6b6b65;
+    --accent: #2a3d2a;
+    --line: #ebe9e3;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--fg); }
+  body {
+    font-family: 'Onest', system-ui, sans-serif;
+    font-weight: 300; line-height: 1.5;
+    -webkit-font-smoothing: antialiased; letter-spacing: -0.01em;
+  }
+
+  nav {
+    position: sticky; top: 0;
+    background: rgba(255,255,255,0.92); backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--line);
+    padding: 18px 40px;
+    display: flex; align-items: center; justify-content: space-between;
+    z-index: 10;
+  }
+  nav .brand { font-weight: 600; font-size: 1.05rem; letter-spacing: -0.02em; }
+  nav .brand span { color: var(--muted); font-weight: 300; }
+  nav .links { display: flex; gap: 36px; font-size: 0.9rem; }
+  nav a { color: var(--fg); text-decoration: none; opacity: 0.65; transition: opacity 0.2s; }
+  nav a:hover { opacity: 1; }
+  nav .login {
+    background: var(--fg); color: var(--bg);
+    padding: 10px 22px; border-radius: 100px;
+    font-size: 0.85rem; font-weight: 400;
+  }
+
+  .hero { padding: 100px 40px 80px; max-width: 1280px; margin: 0 auto; }
+  .hero-tag {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--bg-alt); padding: 10px 18px; border-radius: 100px;
+    font-size: 0.82rem; color: var(--muted); margin-bottom: 40px;
+  }
+  .hero-tag .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+  h1 {
+    font-size: clamp(2.5rem, 7vw, 5.5rem); font-weight: 300;
+    line-height: 1.02; letter-spacing: -0.035em;
+    margin-bottom: 32px; max-width: 900px;
+  }
+  h1 strong { font-weight: 600; }
+  .hero p {
+    font-size: clamp(1.05rem, 1.5vw, 1.25rem); color: var(--muted);
+    max-width: 580px; margin-bottom: 48px;
+  }
+  .hero-ctas { display: flex; gap: 16px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 16px 28px; border-radius: 100px;
+    text-decoration: none; font-size: 0.95rem; font-weight: 400;
+    transition: all 0.2s;
+  }
+  .btn-primary { background: var(--fg); color: var(--bg); }
+  .btn-primary:hover { background: var(--accent); }
+  .btn-ghost { color: var(--fg); border: 1px solid var(--line); }
+  .btn-ghost:hover { border-color: var(--fg); }
+
+  .bento {
+    padding: 0 40px 80px; max-width: 1280px; margin: 0 auto;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-rows: 320px 240px;
+    gap: 16px;
+  }
+  .tile {
+    background: var(--bg-alt); border-radius: 24px; overflow: hidden;
+    position: relative; cursor: pointer; transition: transform 0.3s;
+  }
+  .tile:hover { transform: translateY(-3px); }
+  .tile-img { position: absolute; inset: 0; background-size: cover; background-position: center; }
+  .tile-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 60%);
+  }
+  .tile-content {
+    position: relative; height: 100%; padding: 28px;
+    display: flex; flex-direction: column; justify-content: flex-end; color: white;
+  }
+  .tile-tag {
+    font-size: 0.72rem; letter-spacing: 0.12em;
+    text-transform: uppercase; opacity: 0.85; margin-bottom: 8px;
+  }
+  .tile h3 {
+    font-weight: 500; font-size: 1.35rem;
+    letter-spacing: -0.02em; line-height: 1.15;
+  }
+  .tile-1 { grid-column: 1; grid-row: 1 / 3; }
+  .tile-2 { grid-column: 2; grid-row: 1; }
+  .tile-3 { grid-column: 3; grid-row: 1; }
+  .tile-4 { grid-column: 2 / 4; grid-row: 2; }
+
+  .about { background: var(--bg-alt); padding: 100px 40px; }
+  .about-inner {
+    max-width: 1100px; margin: 0 auto;
+    display: grid; grid-template-columns: 1fr 1.5fr; gap: 80px; align-items: center;
+  }
+  .about-img {
+    aspect-ratio: 1 / 1; border-radius: 24px;
+    background: url('https://feelyoga-dev.vaibkod.online/i/47bc7558-48e8-4381-8ac1-73d69d803b2f?w=720&h=720&fit=crop&fm=webp') center/cover;
+  }
+  .about h2 {
+    font-size: clamp(2rem, 4vw, 3rem); font-weight: 300;
+    letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 28px;
+  }
+  .about h2 strong { font-weight: 600; }
+  .about p { font-size: 1.05rem; color: var(--muted); margin-bottom: 20px; }
+
+  .pricing-section { padding: 100px 40px; max-width: 1280px; margin: 0 auto; text-align: center; }
+  .pricing-section h2 {
+    font-size: clamp(2rem, 4vw, 2.8rem); font-weight: 300;
+    letter-spacing: -0.03em; margin-bottom: 16px;
+  }
+  .pricing-section > p { color: var(--muted); font-size: 1.05rem; margin-bottom: 60px; }
+  .pricing-card {
+    max-width: 440px; margin: 0 auto;
+    background: var(--bg-alt); border-radius: 28px;
+    padding: 48px 40px; text-align: left;
+  }
+  .pricing-card .name { font-weight: 500; font-size: 1.1rem; margin-bottom: 12px; }
+  .pricing-card .price {
+    font-size: 3rem; font-weight: 300;
+    letter-spacing: -0.04em; margin-bottom: 8px;
+  }
+  .pricing-card .price small { font-size: 1rem; color: var(--muted); }
+  .pricing-card ul { list-style: none; margin: 32px 0; }
+  .pricing-card li {
+    padding: 10px 0; color: var(--muted); font-size: 0.95rem;
+    display: flex; gap: 12px; align-items: center;
+  }
+  .pricing-card li::before {
+    content: ''; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--accent); flex-shrink: 0;
+  }
+  .pricing-card .btn { width: 100%; justify-content: center; }
+
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 32px 40px;
+    display: flex; justify-content: space-between;
+    font-size: 0.85rem; color: var(--muted);
+    max-width: 1280px; margin: 0 auto;
+  }
+
+  @media (max-width: 800px) {
+    nav { padding: 14px 20px; }
+    nav .links { display: none; }
+    .hero, .pricing-section, .about { padding: 60px 20px; }
+    .about-inner { grid-template-columns: 1fr; gap: 32px; }
+    .bento {
+      padding: 0 20px 60px;
+      grid-template-columns: 1fr; grid-template-rows: auto;
+    }
+    .tile-1, .tile-2, .tile-3, .tile-4 {
+      grid-column: 1; grid-row: auto; min-height: 220px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="brand">filippov<span>.yoga</span></div>
+  <div class="links">
+    <a href="#practices">Практики</a>
+    <a href="#about">Обо мне</a>
+    <a href="#subscription">Подписка</a>
+  </div>
+  <a class="login" href="https://feelyoga-dev.vaibkod.online/admin">Войти</a>
+</nav>
+
+<section class="hero">
+  <div class="hero-tag">
+    <span class="dot"></span>
+    Закрытая платформа для учеников Михаила
+  </div>
+  <h1>Спокойная практика <strong>без громких обещаний</strong> и преображения за 21 день.</h1>
+  <p>Видео-библиотека утренних классов, пранаям и медитаций. Записи занятий, разборы, эфиры —
+  для тех, кто уже работает с дыханием и хочет глубже.</p>
+  <div class="hero-ctas">
+    <a class="btn btn-primary" href="#practices">Смотреть практики</a>
+    <a class="btn btn-ghost" href="#about">Кто такой Михаил</a>
+  </div>
+</section>
+
+<section id="practices" class="bento">
+  <div class="tile tile-1">
+    <div class="tile-img" style="background-image:url('https://feelyoga-dev.vaibkod.online/i/c48584b0-d682-45f7-a317-0c960aefae48?w=900&h=900&fit=crop&fm=webp')"></div>
+    <div class="tile-overlay"></div>
+    <div class="tile-content">
+      <div class="tile-tag">Хатха · 35 минут</div>
+      <h3>Утренняя последовательность</h3>
+    </div>
+  </div>
+  <div class="tile tile-2">
+    <div class="tile-img" style="background-image:url('https://feelyoga-dev.vaibkod.online/i/de2a2fcc-e700-450e-b128-b86a68f74478?w=600&h=600&fit=crop&fm=webp')"></div>
+    <div class="tile-overlay"></div>
+    <div class="tile-content">
+      <div class="tile-tag">Пранаяма · 18 мин</div>
+      <h3>Нади Шодхана</h3>
+    </div>
+  </div>
+  <div class="tile tile-3">
+    <div class="tile-img" style="background-image:url('https://feelyoga-dev.vaibkod.online/i/47bc7558-48e8-4381-8ac1-73d69d803b2f?w=600&h=600&fit=crop&fm=webp')"></div>
+    <div class="tile-overlay"></div>
+    <div class="tile-content">
+      <div class="tile-tag">Медитация · 22 мин</div>
+      <h3>Чайная церемония</h3>
+    </div>
+  </div>
+  <div class="tile tile-4">
+    <div class="tile-img" style="background-image:url('https://feelyoga-dev.vaibkod.online/i/de2a2fcc-e700-450e-b128-b86a68f74478?w=900&h=400&fit=crop&fm=webp')"></div>
+    <div class="tile-overlay"></div>
+    <div class="tile-content">
+      <div class="tile-tag">Запись эфира · 1 ч 12 мин</div>
+      <h3>Разбор практики Брамари</h3>
+    </div>
+  </div>
+</section>
+
+<section id="about" class="about">
+  <div class="about-inner">
+    <div class="about-img"></div>
+    <div>
+      <h2>Михаил <strong>Филиппов</strong></h2>
+      <p>Преподаю йогу. Эта платформа — не для маркетинга, а для моих учеников: записанные классы,
+      разборы, новые видео каждую неделю.</p>
+      <p>Если хотите попасть — лучше через рекомендацию того, кто уже занимается.
+      Так получается чище.</p>
+    </div>
+  </div>
+</section>
+
+<section id="subscription" class="pricing-section">
+  <h2>Один уровень подписки</h2>
+  <p>Без апселов, дорогих курсов и «премиум» планов. Полный доступ — за одну цену.</p>
+
+  <div class="pricing-card">
+    <div class="name">Студент</div>
+    <div class="price">100<small> ₽ / месяц</small></div>
+    <ul>
+      <li>Доступ ко всей видео-библиотеке</li>
+      <li>Новые записи каждую неделю</li>
+      <li>Эфиры и разборы</li>
+      <li>Закрытый чат учеников</li>
+    </ul>
+    <a class="btn btn-primary" href="https://feelyoga-dev.vaibkod.online/user/subscription">Оформить подписку</a>
+  </div>
+</section>
+
+<footer>
+  <span><strong>filippov</strong>.yoga</span>
+  <span>Разработка сайта vaibkod.ru · 2026</span>
+</footer>
+
+</body>
+</html>

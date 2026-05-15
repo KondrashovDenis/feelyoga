@@ -1,0 +1,15 @@
+# Кусок, который добавлен в ~/projects/nginx-proxy/docker-compose.yml на debianOCR
+# в блок services.nginx-proxy.volumes
+#
+# Полная инструкция:
+#   1. Открыть ~/projects/nginx-proxy/docker-compose.yml
+#   2. В services.nginx-proxy.volumes добавить строку:
+#      - /home/denciao/projects/feelyoga-mockups/site:/var/www/feelyoga-mockups:ro
+#   3. cd ~/projects/nginx-proxy && docker compose up -d   (recreate, ~2 сек downtime)
+#
+# Этот файл — не для прямого включения, только как справка.
+
+services:
+  nginx-proxy:
+    volumes:
+      - /home/denciao/projects/feelyoga-mockups/site:/var/www/feelyoga-mockups:ro
