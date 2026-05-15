@@ -20,7 +20,12 @@ Discovery → выбор пути деплоя. Заказчик хочет он
 - **Хостинг dev:** debianOCR за nginx-proxy (временно, для разработки)
 - **Хостинг прод:** VPS Timeweb в РФ-зоне (коммерческий проект, не должен зависеть от сервера Андрея).
   Перенос: `docker compose down` → scp `./docker/mariadb` + `./upload` + `.env` + код → `up` на VPS.
-- **Git:** локально `D:\Claude\FeelYoga` → после выбора домена создаём bare-репо на debianOCR + remote `github.com/KondrashovDenis/feelyoga`
+- **Git:**
+  - Локально: `D:\Claude\Yoga-Filippov\` (папку не переименовываем — рабочая)
+  - На debianOCR: `~/projects/feelyoga/`
+  - GitHub (приватный): `https://github.com/KondrashovDenis/feelyoga.git`
+- **Dev-домен:** `feelyoga-dev.vaibkod.online` (DNS на reg.ru → 84.54.188.199 debianOCR, пропагирован).
+  Корень `vaibkod.online` и `www.vaibkod.online` тоже указывают на debianOCR — можно использовать для HTML-моков.
 
 ## ТЗ от заказчика (Михаил)
 Прямая цитата: *«главное чтобы хорошо открывались видосики и качество было и чтобы оплата как часы работала. Все остальное нюансы и максимально просто»*.
