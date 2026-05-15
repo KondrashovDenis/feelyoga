@@ -1,0 +1,40 @@
+// === FeelYoga theme: белый минимализм + Manrope (light weights) ===
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700&display=swap');
+
+$font-family-sans-serif: 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+$headings-font-weight: 300;
+$font-weight-base: 300;
+$body-color: #2a2a2a;
+$body-bg: #ffffff;
+
+// Тёплый травянистый акцент (тёмный шалфей) — подходит йоге, нейтрален, не «фитнес-неон»
+$primary: #6b8e6b;
+$link-color: $primary;
+
+$enable-cssgrid: true;
+$grid-breakpoints: (
+    xs: 0,
+    md: 768px,
+    lg: 1100px,
+    xl: 1400px
+);
+$container-max-widths: (
+    // md: 768px,
+    lg: 1140px,
+    xl: 1320px,
+);
+$modal-header-border-width: 0;
+$transition-speed: 0.25s;
+$offcanvas-horizontal-width: 350px;
+$link-decoration: none;
+$link-hover-decoration: underline;
+$widget-items-gap: 1.5rem;
+
+// $min-contrast-ratio: 2.5;
+
+@import "bootstrap-scss/functions";
+@import "bootstrap-scss/variables";
+@import "bootstrap-scss/variables-dark";
+
+$kbd-bg: var(--bs-tertiary-bg);
+$kbd-color: var(--bs-body);
