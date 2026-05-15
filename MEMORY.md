@@ -37,11 +37,31 @@
 - **2026-05-15**: с debianOCR `curl https://feelyoga-dev.vaibkod.online` подвисает — NAT hairpin (сервер не идёт к своему же публичному IP). Проверять снаружи через firecrawl/браузер/`curl --resolve domain:443:127.0.0.1`.
 - **2026-05-15**: `sudo tee/cp` через MCP падает на tty (грабля зафиксирована глобально). Caddyfile админа правил Денис вручную из SSH.
 - **2026-05-15**: при первом запуске Orbita папки `upload/`, `tmp/`, `log/` создались под root и PHP внутри контейнера (www-data UID=33) не мог писать — ошибка `mkdir(): Permission denied` при загрузке файлов через админку. Фикс: `docker exec feelyoga-php-fpm-1 chown -R www-data:www-data /vesp/upload /vesp/tmp /vesp/log`. Делать сразу после `docker compose up -d` на новом инстансе.
+- **2026-05-15**: путь к картинкам в Orbita — `GET /api/image/<uuid>?w=&h=&fit=crop&fm=webp`, **не** `/i/<uuid>` (это короткий редирект на `/topics/<uuid>` 302). Видео — аналогично через `/api/video/<uuid>`. Используется imagick для ресайза on-demand.
 
-## Состояние deploy (2026-05-15)
-- **Dev-инстанс:** https://feelyoga-dev.vaibkod.online/ — **200 OK, locale=ru, дефолтный UI Orbita**
+## Состояние deploy (2026-05-15, конец дня)
+- **Dev-инстанс Orbita:** https://feelyoga-dev.vaibkod.online/ — 200 OK, locale=ru
+  - Кастомизация применена: navbar=`filippov.yoga` (Manrope 200), widgets/author=`filippov.yoga`, footer=`Разработка сайта vaibkod.ru`, убран "Сделано на Орбите", шрифт Manrope, акцент шалфея `#6b8e6b`
+  - В админке: title="Filippov Yoga", description="Онлайн-практики от Михаила Филиппова", copyright="Михаил Филиппов", started=2026-05-15
+  - Загружены: poster (47bc7558...), background (de2a2fcc...), cover (c48584b0...)
+  - Создан топик "Название видео" + загружены 2 видео (одно прицеплено, "Видео с чайной церемонией" — отдельный файл)
+  - Уровень подписки "Студент" — 100₽/мес
+- **HTML-моки на vaibkod.online:**
+  - `/` — индекс с тремя ссылками
+  - `/v1/` — Serif (Cormorant Garamond + Inter) editorial-стиль
+  - `/v2/` — Sans (Onest) bento-сетка
+  - Все три тянут одни картинки из админки Orbita через `/api/image/<uuid>?w=&h=&fit=crop&fm=webp`
 - **6 контейнеров up:** feelyoga-{mariadb,manticore,nginx,node,php-fpm,redis}, COMPOSE_PROJECT_NAME=feelyoga
-- **Caddy админа:** добавлены блоки `feelyoga-dev.vaibkod.online` + `vaibkod.online`/`www.vaibkod.online` → `localhost:8880`
-- **nginx-proxy:** vhost `config/feelyoga-dev.vaibkod.online.conf` → `proxy_pass http://feelyoga-nginx:80`
-- **TLS:** Let's Encrypt сертификат выпущен автоматом
-- **Админка:** `/admin` логин `admin / admin` — **СМЕНИТЬ при первом входе**
+- **Caddy админа:** блоки `feelyoga-dev.vaibkod.online` + `vaibkod.online`/`www.vaibkod.online` → `localhost:8880`
+- **nginx-proxy:** vhosts `feelyoga-dev.vaibkod.online.conf` + `vaibkod.online.conf` (file_server для моков). Volume `feelyoga-mockups/site:/var/www/feelyoga-mockups:ro`.
+- **TLS:** Let's Encrypt автоматом
+- **Админка:** `/admin` — Денис сменил пароль
+
+## Что ждём (next session)
+1. **Михаил выбирает** один из 3 вариантов (или гибрид)
+2. **Михаил доделывает контент:** прицепить второе видео к топику, дать имя топику ("Название видео" — плейсхолдер), оформить страницу "Обо мне", залить ещё видео
+3. **Tbank-эквайринг** — реквизиты `PAYMENT_TBANK_TERMINAL` + `PAYMENT_TBANK_PASSWORD` в `.env`
+
+## Что делаем когда придёт ответ
+- Путь A (эволюционная кастомизация): переписываем `pages/index.vue` под выбранный мок, финализируем шрифт+палитру в `_variables.scss`, переоформляем `components/topic/card.vue`, мобильная версия. Оценка: 2-3 дня.
+- Не забыть: проверить корректность смены `data-bs-theme="dark"` с нашими SCSS-переменными (тёмная палитра требует отдельного `[data-bs-theme="dark"]` блока — пока не сделано).
