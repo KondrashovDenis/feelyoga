@@ -71,6 +71,11 @@ cp <repo>/deploy/docker-compose.override.yml ./docker-compose.override.yml
 # 4. Поднять
 docker compose up -d
 
+# 4.1. Обязательно — фикс прав на upload/tmp/log (PHP под www-data UID=33,
+#      а папки создаются с root после первого старта контейнера).
+#      Без этого админка падает с "mkdir(): Permission denied" при upload.
+docker exec feelyoga-php-fpm-1 chown -R www-data:www-data /vesp/upload /vesp/tmp /vesp/log
+
 # 5. nginx-proxy (если он используется на новом сервере)
 cp <repo>/deploy/nginx-proxy/feelyoga-dev.vaibkod.online.conf ~/projects/nginx-proxy/config/feelyoga.<prod-domain>.conf
 # заменить server_name и proxy_pass под прод-домен

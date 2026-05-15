@@ -36,6 +36,7 @@
 - **2026-05-15**: первый запрос на Nuxt SSR — 10+ секунд (cold start). Любой curl с m<10 ловит 499 timeout. Для curl-тестов min 30 сек.
 - **2026-05-15**: с debianOCR `curl https://feelyoga-dev.vaibkod.online` подвисает — NAT hairpin (сервер не идёт к своему же публичному IP). Проверять снаружи через firecrawl/браузер/`curl --resolve domain:443:127.0.0.1`.
 - **2026-05-15**: `sudo tee/cp` через MCP падает на tty (грабля зафиксирована глобально). Caddyfile админа правил Денис вручную из SSH.
+- **2026-05-15**: при первом запуске Orbita папки `upload/`, `tmp/`, `log/` создались под root и PHP внутри контейнера (www-data UID=33) не мог писать — ошибка `mkdir(): Permission denied` при загрузке файлов через админку. Фикс: `docker exec feelyoga-php-fpm-1 chown -R www-data:www-data /vesp/upload /vesp/tmp /vesp/log`. Делать сразу после `docker compose up -d` на новом инстансе.
 
 ## Состояние deploy (2026-05-15)
 - **Dev-инстанс:** https://feelyoga-dev.vaibkod.online/ — **200 OK, locale=ru, дефолтный UI Orbita**
