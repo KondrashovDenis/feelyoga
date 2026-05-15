@@ -31,4 +31,16 @@
 - У Дениса есть `~/projects/webdav-server` и `~/projects/video_server` — потенциально для отдельного видеохранилища (не нужно на старте, 10 видео ≈ 5-10GB локально)
 
 ## Грабли
-*(empty — пополнять по ходу)*
+- **2026-05-15**: локальный порт 8081 на хосте уже занят → в override `ports: !reset []` (Compose v2.20+). Не публикуем nginx-orbita на хост вообще, всё через docker network.
+- **2026-05-15**: `map $connection_upgrade` уже определён в `tube.sochispirit.com.conf` nginx-proxy → у нас уникальное имя `$ws_feelyoga_upgrade`. Иначе nginx ругается на duplicate map.
+- **2026-05-15**: первый запрос на Nuxt SSR — 10+ секунд (cold start). Любой curl с m<10 ловит 499 timeout. Для curl-тестов min 30 сек.
+- **2026-05-15**: с debianOCR `curl https://feelyoga-dev.vaibkod.online` подвисает — NAT hairpin (сервер не идёт к своему же публичному IP). Проверять снаружи через firecrawl/браузер/`curl --resolve domain:443:127.0.0.1`.
+- **2026-05-15**: `sudo tee/cp` через MCP падает на tty (грабля зафиксирована глобально). Caddyfile админа правил Денис вручную из SSH.
+
+## Состояние deploy (2026-05-15)
+- **Dev-инстанс:** https://feelyoga-dev.vaibkod.online/ — **200 OK, locale=ru, дефолтный UI Orbita**
+- **6 контейнеров up:** feelyoga-{mariadb,manticore,nginx,node,php-fpm,redis}, COMPOSE_PROJECT_NAME=feelyoga
+- **Caddy админа:** добавлены блоки `feelyoga-dev.vaibkod.online` + `vaibkod.online`/`www.vaibkod.online` → `localhost:8880`
+- **nginx-proxy:** vhost `config/feelyoga-dev.vaibkod.online.conf` → `proxy_pass http://feelyoga-nginx:80`
+- **TLS:** Let's Encrypt сертификат выпущен автоматом
+- **Админка:** `/admin` логин `admin / admin` — **СМЕНИТЬ при первом входе**

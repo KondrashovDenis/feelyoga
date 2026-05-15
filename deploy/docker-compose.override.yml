@@ -1,0 +1,16 @@
+services:
+  nginx:
+    container_name: feelyoga-nginx
+    ports: !reset []
+    networks:
+      default:
+      nginx-proxy:
+        aliases:
+          - feelyoga-nginx
+
+networks:
+  default:
+    name: feelyoga_default
+  nginx-proxy:
+    name: nginx-proxy
+    external: true

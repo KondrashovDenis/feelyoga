@@ -81,7 +81,20 @@ Discovery → выбор пути деплоя. Заказчик хочет он
 - Hand-off между сессиями: `.claude-handoff.md` (в `.gitignore`)
 
 ## Ключевые команды
-*(заполнить после первого деплоя)*
+```bash
+# на debianOCR
+cd ~/projects/feelyoga
+docker compose ps
+docker compose logs -f nginx --tail 50    # с timeout — никогда без!
+docker compose up -d
+docker compose down
+
+# nginx-proxy reload после правки vhost
+docker exec nginx-proxy nginx -s reload
+
+# админка Orbita
+# https://feelyoga-dev.vaibkod.online/admin (login: admin / pass: admin по умолчанию — СМЕНИТЬ)
+```
 
 ## Связанные глобальные правила
 - `reference_docker_compose_external_network.md` — `container_name`/`aliases` для shared nginx-proxy сети

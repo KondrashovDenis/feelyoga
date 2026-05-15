@@ -1,0 +1,9 @@
+# === FeelYoga dev (Orbita, 2026-05-15) ===
+# Этот блок добавлен в /etc/caddy/Caddyfile админа debianOCR через `sudo tee -a`.
+# vaibkod.online используется для статических HTML-моков (parallel-варианты для согласования с заказчиком).
+feelyoga-dev.vaibkod.online {
+    reverse_proxy localhost:8880
+}
+vaibkod.online, www.vaibkod.online {
+    reverse_proxy localhost:8880
+}
