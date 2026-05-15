@@ -8,6 +8,16 @@ services:
         aliases:
           - feelyoga-nginx
 
+  # SSR hairpin fix: на серверной стороне Nuxt fetch-ит API через internal docker DNS
+  # http://nginx/ (резолвится по service.name внутри feelyoga_default), а не через
+  # публичный SITE_URL (который дал бы 10s NAT-hairpin hang каждый 2-й SSR-запрос).
+  # См. reference_hairpin_ssr_hang.md в глобальной памяти.
+  node:
+    environment:
+      - SERVER_SITE_URL=http://nginx/
+    volumes:
+      - ./.local/vesp/get-api.js:/vesp/frontend/node_modules/@vesp/frontend/dist/runtime/utils/get-api.js
+
 networks:
   default:
     name: feelyoga_default
