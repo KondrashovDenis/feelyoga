@@ -29,7 +29,21 @@ docker compose restart node       # Nuxt rebuild (~1-3 мин)
 - Шрифт Manrope, font-weight: 200, font-size: 1.75rem
 - Виджет всегда показывается (раньше требовал `$settings.poster || $settings.description`)
 
-### `frontend/src/assets/scss/_variables.scss`
+### `frontend/src/app.vue`
+- Главная (route name === 'index') рендерится **full-width**, без BContainer / BCol — наши секции сами центрируются
+- Остальные страницы — `BContainer` с `BCol lg=12 mx-auto` (правая колонка с виджетами скрыта целиком потому что в `.env` `HIDE_WIDGETS=author,search,online,levels,categories,tags,pages`)
+
+### `frontend/src/pages/index.vue` (наш landing)
+- Hero (FeelHero) — берёт текст из `pages/home-hero` Orbita, портрет из `$settings.poster`
+- Practices grid — `web/topics?limit=9&sort=date` через FeelCard
+- About — `pages/about` (rich-text в EditorJS)
+- Pricing — `web/levels` + intro из `pages/subscription-intro`
+
+### `frontend/src/components/feel/Hero.vue` + `Card.vue` — новые компоненты
+- `FeelHero` — universal с props `page`, `portraitImage`, `cta`, `variant` ('full' | 'simple')
+- `FeelCard` — editorial-карточка топика 4:5
+
+### `frontend/src/components/app/navbar.vue`
 - `@import` Google Fonts Manrope (200/300/400/500/600/700)
 - `$font-family-sans-serif: 'Manrope', ...`
 - `$headings-font-weight: 300`, `$font-weight-base: 300`
