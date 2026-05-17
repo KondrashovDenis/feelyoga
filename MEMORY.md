@@ -38,6 +38,16 @@
 - **2026-05-15**: `sudo tee/cp` через MCP падает на tty (грабля зафиксирована глобально). Caddyfile админа правил Денис вручную из SSH.
 - **2026-05-15**: при первом запуске Orbita папки `upload/`, `tmp/`, `log/` создались под root и PHP внутри контейнера (www-data UID=33) не мог писать — ошибка `mkdir(): Permission denied` при загрузке файлов через админку. Фикс: `docker exec feelyoga-php-fpm-1 chown -R www-data:www-data /vesp/upload /vesp/tmp /vesp/log`. Делать сразу после `docker compose up -d` на новом инстансе.
 - **2026-05-15**: путь к картинкам в Orbita — `GET /api/image/<uuid>?w=&h=&fit=crop&fm=webp`, **не** `/i/<uuid>` (это короткий редирект на `/topics/<uuid>` 302). Видео — аналогично через `/api/video/<uuid>`. Используется imagick для ресайза on-demand.
+- **2026-05-17**: deploy Orbita на слабый VPS (1vCPU/1GB/10GB) — `npm i + nuxt build` НЕ влезает в 10GB диск (containerd overlayfs съедает всё до 100%). Симптом: node exit code 1, OOMKilled=false, docker logs пусто. Решение — **pre-built deployment**: собрать `.output/` на dev-машине (debianOCR), упаковать `tar -czf` (~4-30MB), скопировать на VPS, override compose `command: node ./.output/server/index.mjs` без npm/build. Свой get-api.js hairpin-фикс при этом запекается в bundled chunks ещё на этапе build (видно `SITE_URL = "http://nginx/"` в `.output/server/chunks/nitro.mjs`). На VPS остаётся только runtime ≈ 80MB RAM.
+- **2026-05-17**: swap 2GB на 10GB диск — слишком жирно (20% диска). Для VPS с малым диском swap 512MB достаточно, остальное освобождает место под Docker.
+
+## VPS-инстанс (2026-05-17, тренировочный)
+- **URL:** https://vps.vaibkod.online/ — 200 OK, тот же UI что dev
+- **Хост:** reg.облако Free Tier, 1vCPU/1GB/10GB, Debian 12, IP 195.208.2.136
+- **Архитектура:** Caddy нативно через apt (без nginx-proxy слоя), reverse_proxy localhost:8080
+- **Deploy режим:** pre-built — `.output/` собран на debianOCR, скачан через https://vaibkod.online/feelyoga-output.tar.gz, на VPS только runtime
+- **Свободно на диске после деплоя:** ~3GB из 10GB
+- **Не для прода Михаила** — для Михаила минимум 2vCPU/4GB/40GB SSD на Timeweb
 
 ## Состояние deploy (2026-05-15, конец дня)
 - **Dev-инстанс Orbita:** https://feelyoga-dev.vaibkod.online/ — 200 OK, locale=ru
