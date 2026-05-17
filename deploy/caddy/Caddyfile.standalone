@@ -1,0 +1,31 @@
+# /etc/caddy/Caddyfile на VPS (Caddy нативно через apt)
+#
+# Caddy сам берёт Let's Encrypt сертификат при первом запросе.
+# DNS домена должен резолвиться на IP VPS до запуска.
+#
+# Поменять:
+#   <DOMAIN>  → реальный домен (например vps.vaibkod.online или feelyoga.com)
+#   <EMAIL>   → email для Let's Encrypt уведомлений (denciaopin@gmail.com)
+#   8080      → значение NGINX_PORT из .env
+
+{
+    email <EMAIL>
+}
+
+<DOMAIN>, www.<DOMAIN> {
+    encode gzip
+
+    # Видео-аплоад до 5GB через админку
+    request_body {
+        max_size 5GB
+    }
+
+    reverse_proxy localhost:8080 {
+        # Long timeouts для транскодинга и больших аплоадов
+        transport http {
+            response_header_timeout 5m
+            read_timeout 5m
+            write_timeout 5m
+        }
+    }
+}
