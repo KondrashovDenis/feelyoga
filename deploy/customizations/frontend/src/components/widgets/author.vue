@@ -44,9 +44,9 @@ const posterProps = computed(() => {
 
 <style lang="scss" scoped>
 .brand-title {
-  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
-  font-weight: 200;
-  font-size: 1.75rem;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 400;
+  font-size: 2rem;
   letter-spacing: 0.02em;
   margin-bottom: 0.75rem;
 }

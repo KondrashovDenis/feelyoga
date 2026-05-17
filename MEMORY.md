@@ -49,6 +49,12 @@
 - **Свободно на диске после деплоя:** ~3GB из 10GB
 - **Не для прода Михаила** — для Михаила минимум 2vCPU/4GB/40GB SSD на Timeweb
 
+## Выбор дизайна (2026-05-17)
+- **Михаилу зашёл v1 (Serif)** из 3 вариантов на vaibkod.online
+- В Orbita портируется **поэтапно**: Phase A (шрифт+палитра, без кода) → Phase B (новый pages/index.vue с full-width hero/about/pricing) → Phase C (editorial карточки топиков)
+- **Phase A сделана:** Cormorant Garamond + Inter, акцент олива `#6b7d5f`, warm off-white `#fafaf8`, navbar/widget brand с serif italic, добавлен dark-theme override
+- **Архитектура контента** для админ-редактирования: тексты hero/about/pricing-intro в `pages` Orbita (с alias `home-*`, position=none — не появляются в навигации), редактируются Михаилом через EditorJS в `/admin/pages`. Pricing — `levels` (уже есть). Картинки — `settings.poster/background/cover` (уже есть). **Ноль новых полей** добавлять в админку не надо.
+
 ## Готовый скилл для будущих миграций
 - `~/.claude/skills/vps-migration/SKILL.md` — собран из всего опыта FeelYoga
 - Триггерится на "перенести на VPS / deploy на Timeweb / переехать с debianOCR"

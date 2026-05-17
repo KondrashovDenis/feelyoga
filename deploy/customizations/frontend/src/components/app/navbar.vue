@@ -82,9 +82,10 @@ function changeColorTheme(newValue: BasicColorSchema | undefined = undefined) {
 
 <style lang="scss" scoped>
 .brand-text {
-  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
-  font-weight: 200;
-  font-size: 1.5rem;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-weight: 400;
+  font-style: italic;
+  font-size: 1.7rem;
   letter-spacing: 0.02em;
   color: var(--bs-body-color);
 
