@@ -42,12 +42,18 @@
 - **2026-05-17**: swap 2GB на 10GB диск — слишком жирно (20% диска). Для VPS с малым диском swap 512MB достаточно, остальное освобождает место под Docker.
 
 ## VPS-инстанс (2026-05-17, тренировочный)
-- **URL:** https://vps.vaibkod.online/ — 200 OK, тот же UI что dev
+- **URL:** https://vps.vaibkod.online/ — 200 OK, полный клон dev (после import-data-vps.sh)
 - **Хост:** reg.облако Free Tier, 1vCPU/1GB/10GB, Debian 12, IP 195.208.2.136
 - **Архитектура:** Caddy нативно через apt (без nginx-proxy слоя), reverse_proxy localhost:8080
 - **Deploy режим:** pre-built — `.output/` собран на debianOCR, скачан через https://vaibkod.online/feelyoga-output.tar.gz, на VPS только runtime
 - **Свободно на диске после деплоя:** ~3GB из 10GB
 - **Не для прода Михаила** — для Михаила минимум 2vCPU/4GB/40GB SSD на Timeweb
+
+## Готовый скилл для будущих миграций
+- `~/.claude/skills/vps-migration/SKILL.md` — собран из всего опыта FeelYoga
+- Триггерится на "перенести на VPS / deploy на Timeweb / переехать с debianOCR"
+- Двухрежимный install (prebuilt/build), 4 фазы, 9 pitfalls, шаблон-проект `KondrashovDenis/feelyoga`
+- Применять при переезде на прод-Timeweb для Михаила или для других проектов Дениса
 
 ## Состояние deploy (2026-05-15, конец дня)
 - **Dev-инстанс Orbita:** https://feelyoga-dev.vaibkod.online/ — 200 OK, locale=ru
