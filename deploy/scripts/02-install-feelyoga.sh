@@ -36,9 +36,9 @@ fi
 
 # --- DNS проверка (необязательная) ---
 echo "==> проверяю DNS"
-RESOLVED=$(dig +short A "$DOMAIN" 2>/dev/null | head -1 || echo "")
+RESOLVED=$(getent ahostsv4 "$DOMAIN" 2>/dev/null | head -1 | awk '{print $1}' || true)
 IP=$(curl -s ifconfig.me || echo "?")
-if [[ -z "$RESOLVED" ]]; then
+if [[ -z "${RESOLVED:-}" ]]; then
     echo "⚠ Не смог зарезолвить $DOMAIN. Проверь A-запись."
 elif [[ "$RESOLVED" != "$IP" ]]; then
     echo "⚠ $DOMAIN → $RESOLVED, но мой IP = $IP. Caddy не получит сертификат."
