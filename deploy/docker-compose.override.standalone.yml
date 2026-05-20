@@ -2,22 +2,64 @@
 # Caddy установлен нативно через apt и слушает 80/443 на хосте.
 # Orbita nginx публикует порт на 127.0.0.1:<NGINX_PORT> — Caddy туда reverse_proxy.
 #
-# Отличается от deploy/docker-compose.override.yml (debianOCR-вариант):
+# Resource limits — тариф **Стандарт** Timeweb (2 GB RAM / 2 vCPU суммарно).
+#
+# Mode: **pre-built** (.output собран на debianOCR через 'docker compose exec node npm run build',
+# затем tar -czf .output и скопирован сюда). Node ТОЛЬКО запускает готовый server.
+# Без npm i / nuxt build на VPS — экономит ~1 GB RAM, ~5-15 минут на каждый restart.
+# Перебилд = делаем на debianOCR, заливаем артефакт в /opt/projects/feelyoga/frontend/.output/
+#
+# ❌ Без этого режима (т.е. при наследовании базового compose с 'npm i && npm run build'):
+# nuxt build OOM-нется при mem_limit=512m → node exit 134 → restart loop. См. MEMORY.md грабли.
+#
+# Отличается от deploy/docker-compose.override.yml (debianOCR-вариант с shared nginx-proxy):
 #   - НЕТ `ports: !reset []` (нужно публиковать порт на хост для Caddy)
 #   - НЕТ `networks: nginx-proxy` (это специфика debianOCR)
 #   - НЕТ `container_name: feelyoga-nginx` (на VPS нет других проектов с коллизиями)
 #   - ЕСТЬ SSR hairpin fix (та же грабля может быть на любом VPS)
+#   - ЕСТЬ resource limits на все контейнеры (multi-tenant изоляция от других проектов VPS)
+#   - ЕСТЬ pre-built command для node
 #
 # Применение на VPS:
 #   cp deploy/docker-compose.override.standalone.yml <orbita-dir>/docker-compose.override.yml
 #
-# В .env поставить NGINX_HOST=127.0.0.1, NGINX_PORT=8080 (или любой свободный).
+# В .env поставить NGINX_HOST=127.0.0.1, NGINX_PORT=8081 (или любой свободный).
 
 services:
   # SSR hairpin fix — fetch на http://nginx/ изнутри docker, не на публичный hostname.
   # См. reference_hairpin_ssr_hang.md в глобальной памяти.
   node:
+    # Pre-built deployment: .output скачан с dev-сборки, билд на VPS пропущен.
+    command: sh -c 'node ./.output/server/index.mjs'
     environment:
       - SERVER_SITE_URL=http://nginx/
     volumes:
       - ./.local/vesp/get-api.js:/vesp/frontend/node_modules/@vesp/frontend/dist/runtime/utils/get-api.js
+    mem_limit: 512m
+    mem_reservation: 128m
+    cpus: 0.7
+
+  mariadb:
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+
+  php-fpm:
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.8
+
+  manticore:
+    mem_limit: 128m
+    mem_reservation: 64m
+    cpus: 0.3
+
+  redis:
+    mem_limit: 96m
+    mem_reservation: 32m
+    cpus: 0.2
+
+  nginx:
+    mem_limit: 64m
+    mem_reservation: 32m
+    cpus: 0.2

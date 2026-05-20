@@ -87,3 +87,34 @@
 ## Что делаем когда придёт ответ
 - Путь A (эволюционная кастомизация): переписываем `pages/index.vue` под выбранный мок, финализируем шрифт+палитру в `_variables.scss`, переоформляем `components/topic/card.vue`, мобильная версия. Оценка: 2-3 дня.
 - Не забыть: проверить корректность смены `data-bs-theme="dark"` с нашими SCSS-переменными (тёмная палитра требует отдельного `[data-bs-theme="dark"]` блока — пока не сделано).
+
+## PROD (2026-05-20)
+- **URL:** https://filippov.yoga (Timeweb VPS Vaibkod1, 5.129.240.144)
+- **Каталог:** `/opt/projects/feelyoga/` (user `deploy`)
+- **MCP:** `mcp__timeweb__bash|read_file|write_file|list_dir` (cwd по умолчанию /home/deploy)
+- **Caddy snippet:** `/opt/infra/caddy/snippets/feelyoga.caddy` → `reverse_proxy 127.0.0.1:8081`
+- **Архитектура контента:** база `bezumkin/orbita` + overlay из `KondrashovDenis/feelyoga` (наш fork).
+- **Phase B-7 customizations** (Hero/Card/navbar/index.vue/about/subscription/search/[topics]) применены — см. `deploy/customizations/frontend/`.
+- **Mode: pre-built** — `.output/` собирается на debianOCR через `docker compose exec node npm run build`, упаковывается в tar.gz, заливается на VPS в `frontend/.output/`. Node контейнер запускается за 4 сек, не билдит.
+- **HIDE_WIDGETS=author,search,online,levels,categories,tags,pages** — все правые виджеты глобально скрыты.
+- **Sentry DSN в .env есть** (GlitchTip self-hosted `https://errors.infra.vaibkod.online`):
+  - `SENTRY_DSN` (php) → project feelyoga (ID 1)
+  - `NUXT_PUBLIC_SENTRY_DSN` → project feelyoga-js (ID 2)
+  - SDK композер/npm пакеты **ещё не подключены** — отдельная задача (когда понадобится).
+- **SMTP пустой** на VPS — Orbita не шлёт писем. Ждём VK Workspace для filippov.yoga (привязка к почте Михаила).
+- **dev-инстанс `https://feelyoga-dev.vaibkod.online/`** на debianOCR оставлен как площадка для проб (Денис: "места там хватает").
+
+## Workflow для prod-правок (важно)
+1. Правка локально в `D:\Claude\Yoga-Filippov\deploy\customizations\frontend\...`
+2. `git push` в `KondrashovDenis/feelyoga` (origin)
+3. Применить overlay на debianOCR: `cp -r deploy/customizations/frontend/. ~/projects/feelyoga/frontend/`
+4. **Перебилдить .output на debianOCR:** `docker compose exec -T node sh -c 'cd /vesp/frontend && rm -rf .output && npm run build'`
+5. **Упаковать + опубликовать tarball:** `cd ~/projects/feelyoga/frontend && tar -czf /tmp/feelyoga-output-$(openssl rand -hex 8).tar.gz .output && mv ... ~/projects/feelyoga-mockups/site/` (доступно как https://vaibkod.online/feelyoga-output-XXX.tar.gz)
+6. **На VPS:** `sudo rm -rf /opt/projects/feelyoga/frontend/.output && curl -fsSL <URL> -o /tmp/out.tar.gz && tar -xzf /tmp/out.tar.gz -C /opt/projects/feelyoga/frontend/`
+7. **Recreate node:** `cd /opt/projects/feelyoga && docker compose up -d --force-recreate node` (4 секунды)
+
+## Грабли PROD (2026-05-20)
+- **OOM в restart loop при mode=build на Стандарт-тарифе.** `mem_limit: 512m` на node-контейнере недостаточно для `nuxt build --vite production`. Heap уходит за 250 MB, V8 → "Ineffective mark-compacts near heap limit" → exit 134 → docker рестарт → опять npm i + build → опять OOM. RestartCount 674 за сутки. Фикс: pre-built mode (`.output/` собирается отдельно, на проде только runtime ≈ 60-80 MB).
+- **Core dump 2.2 GB в `frontend/core`** при OOM-крашах node. Чистить через `sudo rm`. На будущее: настроить `ulimit -c 0` для контейнера или `kernel.core_pattern` чтобы не плодились.
+- **SITE_URL запекается в `.output` при build** — при сборке на debianOCR в чанки попадает `https://feelyoga-dev.vaibkod.online/`, og:image на проде указывает на dev-домен. Решение: на debianOCR подменить SITE_URL в .env перед build, пересобрать. Task #6 в backlog.
+- **`.output/` принадлежит root** (создан внутри node-контейнера) — `rm -rf .output` под `deploy` падает с Permission denied. Нужен `sudo rm`.
