@@ -79,14 +79,40 @@
 - **TLS:** Let's Encrypt автоматом
 - **Админка:** `/admin` — Денис сменил пароль
 
-## Что ждём (next session)
-1. **Михаил выбирает** один из 3 вариантов (или гибрид)
-2. **Михаил доделывает контент:** прицепить второе видео к топику, дать имя топику ("Название видео" — плейсхолдер), оформить страницу "Обо мне", залить ещё видео
-3. **Tbank-эквайринг** — реквизиты `PAYMENT_TBANK_TERMINAL` + `PAYMENT_TBANK_PASSWORD` в `.env`
+## Backlog для следующих сессий
 
-## Что делаем когда придёт ответ
-- Путь A (эволюционная кастомизация): переписываем `pages/index.vue` под выбранный мок, финализируем шрифт+палитру в `_variables.scss`, переоформляем `components/topic/card.vue`, мобильная версия. Оценка: 2-3 дня.
-- Не забыть: проверить корректность смены `data-bs-theme="dark"` с нашими SCSS-переменными (тёмная палитра требует отдельного `[data-bs-theme="dark"]` блока — пока не сделано).
+### Открытые задачи (по приоритету)
+1. **Ждём Михаила** — финальные тексты hero/about/subscription через `/admin/pages` + видео-контент (он залил пока 1 placeholder-видео)
+2. **Sentry/GlitchTip SDK подключение** — DSN в `.env` уже есть, composer-пакет `sentry/sentry` для PHP и `@sentry/nuxt` для frontend ещё **не установлены**. Делать как отдельную сессию когда понадобится — пример настройки в `~/.claude/projects/D--Claude-petparking/memory/project_email_stack_*.md` (там полный pattern для Django, для Orbita аналогично).
+3. **`info@filippov.yoga` ящик в VK admin** — создать когда Михаил скажет на какой адрес форвардить (его yandex или другой).
+4. **Fix baked-in SITE_URL в og:image** (Task #6 в task tracker) — при следующем перебилде на debianOCR подменить `SITE_URL=https://filippov.yoga/` в `.env` перед `npm run build`, иначе og:image указывает на dev-домен.
+5. **GitHub Actions CI/CD** — обсуждали, отложили на после email pipeline. Файл `.github/workflows/build-and-deploy.yml` уже спланирован: push в main → build .output на ubuntu-latest → scp на VPS → recreate node. Нужен `VPS_SSH_KEY` в GH Secrets.
+6. **Tbank-эквайринг** — реквизиты `PAYMENT_TBANK_TERMINAL` + `PAYMENT_TBANK_PASSWORD` в `.env` (от Михаила когда заведёт интернет-эквайринг).
+
+### Roadmap по разработке
+- Когда Михаил пришлёт реальные тексты — править через `/admin/pages` напрямую (placeholder в `home-hero`, `subscription-intro`, `about` уже заведены). **Кода трогать не надо.**
+- Когда зальёт видео — раскидать по 4 категориям (`practice`/`courses`/`meditation`/`pranayama`) через `/admin/topics`.
+- Если попросит правки структуры layout/новые секции/правки шрифтов — переписываем компоненты в `deploy/customizations/frontend/...` локально → git push → apply на debianOCR → перебилд .output → upload на VPS.
+
+### Известные проблемы / технический долг
+- `og:image` указывает на `https://feelyoga-dev.vaibkod.online/...` (запеклось при build) — Task #6
+- `data-bs-theme="dark"` блок в SCSS есть, но визуально не протестирован на проде (нет ученика чтобы пощёлкал переключатель темы — проверим позже)
+- Sentry events не доходят — SDK не подключён
+
+## Email pipeline активен (2026-05-20, конец дня)
+- **Отправка:** VK Workspace SMTP через `noreply@filippov.yoga` (`smtp.mail.ru:587 TLS`, app-password 16 chars).
+- **Smoke-test пройден:** оба теста доставлены во входящие (gmail + mail.ru), не в спам.
+- **DNS-записи под почту filippov.yoga (все в reg.ru):**
+  - `@` TXT `mailru-domain: 12VMwWFuW0bJzpD7` ← VK verify
+  - `@` MX `emx.mail.ru.` (priority 10) ← VK приём
+  - `@` TXT `v=spf1 include:_spf.mail.ru include:spf.unisender.ru ~all` ← combined SPF (VK + UniSender)
+  - `@` TXT `unisender-go-validate-hash=043c6a25fd905b56e5898614dcf25d25` ← UniSender verify (не используется сейчас, но остался на будущее)
+  - `mailru._domainkey` TXT `v=DKIM1; k=rsa; p=...` ← VK DKIM (234 chars)
+  - `us._domainkey` TXT `v=DKIM1; k=rsa; p=...` ← UniSender DKIM (не используется сейчас)
+  - `_dmarc` CNAME `filippov.yoga.dmarc.unisender.ru.` ← DMARC делегирован UniSender
+- **`.env` SMTP блок** на VPS: `SMTP_HOST=smtp.mail.ru`, `SMTP_USER=noreply@filippov.yoga`, `SMTP_PORT=587`, `SMTP_PROTO=tls`, `SMTP_USER_NAME=FeelYoga`, `SMTP_PASS=<app-password>` (только в .env на сервере, в git нет).
+- **Mail.php overlay-патч** (`deploy/customizations/core/src/Services/Mail.php`): добавлена поддержка `SMTP_FROM` (fallback на `SMTP_USER`). Сейчас неактивна; останется на случай UniSender Go или похожих провайдеров.
+- **Ящик `info@filippov.yoga`** для приёма — ещё не создан в VK admin; делать когда Михаил скажет на какой адрес форвардить.
 
 ## PROD (2026-05-20)
 - **URL:** https://filippov.yoga (Timeweb VPS Vaibkod1, 5.129.240.144)

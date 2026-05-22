@@ -15,6 +15,12 @@ docker compose restart node       # Nuxt rebuild (~1-3 мин)
 
 ## Какие файлы переопределены
 
+### `core/src/Services/Mail.php`
+- Overlay-патч: добавлена поддержка опциональной env-переменной `SMTP_FROM` (с fallback на `SMTP_USER`).
+- **Сейчас не используется** (VK SMTP login=from совпадают).
+- На будущее: если когда-то понадобится UniSender Go или иной провайдер где login=user_id, а from=email — просто добавить `SMTP_FROM` в `.env`.
+- Обратно-совместим с upstream Orbita.
+
 ### `frontend/src/components/app/navbar.vue`
 - BImg-логотип `public/project/logo.svg` заменён на текст `filippov.yoga`
 - Шрифт Manrope, font-weight: 200, font-size: 1.5rem
