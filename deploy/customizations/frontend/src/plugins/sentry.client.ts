@@ -17,6 +17,17 @@ export default defineNuxtPlugin((nuxtApp) => {
     sampleRate: 1.0,
     tracesSampleRate: 0,
     integrations: [],
+    // Known noise — внешние библиотеки Orbita, не наш код:
+    //  - Vidstack media-player при первой инициализации бросает 2-3 разные
+    //    ошибки за один тик (connectScope race, RAF noise) — не влияет на UX,
+    //    плеер дальше работает; фильтруем чтобы не спамить Telegram.
+    //  - Наш собственный JS не использует minified `t()` или `this.$` —
+    //    эти cryptic-сообщения почти всегда означают чужую minified lib.
+    ignoreErrors: [
+      't is not a function',
+      /can't access property.*this\.\$/i,
+      /this\.\$ is undefined/i,
+    ],
     beforeSend(event) {
       if (event.request?.url) {
         event.request.url = event.request.url.split('?')[0]
