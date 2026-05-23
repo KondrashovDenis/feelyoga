@@ -35,20 +35,20 @@ class Tbank extends Controller
         $data = json_decode($body, true);
 
         if (!is_array($data)) {
-            Log::warn('Tbank webhook: invalid JSON body', ['raw' => substr($body, 0, 500)]);
+            Log::info('Tbank webhook: invalid JSON body', ['raw' => substr($body, 0, 500)]);
             return $this->ok();
         }
 
         $orderId = $data['OrderId'] ?? null;
         if (!$orderId) {
-            Log::warn('Tbank webhook: no OrderId', ['data' => $data]);
+            Log::info('Tbank webhook: no OrderId', ['data' => $data]);
             return $this->ok();
         }
 
         /** @var Payment|null $payment */
         $payment = Payment::query()->find($orderId);
         if (!$payment) {
-            Log::warn('Tbank webhook: payment not found', ['order_id' => $orderId]);
+            Log::info('Tbank webhook: payment not found', ['order_id' => $orderId]);
             return $this->ok();
         }
 
