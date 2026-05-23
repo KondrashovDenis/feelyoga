@@ -70,14 +70,21 @@ jobs:
 
       - name: Prepare build-time .env
         working-directory: upstream
+        env:
+          NUXT_PUBLIC_SENTRY_DSN: ${{ secrets.NUXT_PUBLIC_SENTRY_DSN }}
         run: |
           # Минимальный .env для nuxt build — только то, что прибивается в bundle.
           # Runtime env (DB, SMTP, секреты) подхватываются на VPS из реального .env.
+          # NUXT_PUBLIC_* должны быть здесь, иначе client-bundle получит пустые значения.
           cat > .env <<EOF
           SITE_URL=${SITE_URL}
           NUXT_PUBLIC_SITE_URL=${SITE_URL}
           NODE_PORT=3000
+          NUXT_PUBLIC_SENTRY_DSN=${NUXT_PUBLIC_SENTRY_DSN}
+          NUXT_PUBLIC_SENTRY_ENVIRONMENT=production
           EOF
+          # diag: показать что DSN не пуст (без значения)
+          if [ -n "$NUXT_PUBLIC_SENTRY_DSN" ]; then echo "SENTRY DSN: configured"; else echo "SENTRY DSN: EMPTY (set NUXT_PUBLIC_SENTRY_DSN secret)"; fi
 
       - name: Install deps + Sentry browser SDK & build Nuxt
         working-directory: upstream/frontend
