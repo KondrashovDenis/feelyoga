@@ -55,8 +55,11 @@
                     <div v-html="$t('security.register_agree', {link: userAgreement})" />
                   </BFormCheckbox>
                 </div>
-                <!-- Yandex SmartCaptcha (invisible). Виджет рендерится только если в .env есть NUXT_PUBLIC_YANDEX_CAPTCHA_SITE_KEY. -->
-                <FeelYandexCaptcha ref="captchaRef" v-model="formRegister.captcha_token" />
+                <!-- Yandex SmartCaptcha (видимый widget — гарантированно показывается).
+                     Для invisible mode добавь :invisible="true", но проверь что callback успевает до submit.
+                     Auto-import имени FeelYandexCaptcha по непонятной причине не отрабатывает →
+                     импортируем явно (паттерн как в petparking). -->
+                <YandexCaptcha ref="captchaRef" v-model="formRegister.captcha_token" :invisible="false" />
                 <div class="text-center">
                   <BButton variant="primary" type="submit">
                     {{ $t('actions.submit') }}
@@ -86,6 +89,7 @@
 
 <script setup lang="ts">
 import type {BaseButtonVariant} from 'bootstrap-vue-next'
+import YandexCaptcha from '~/components/feel/YandexCaptcha.vue'
 
 defineProps({
   btnVariant: {
