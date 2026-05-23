@@ -90,6 +90,17 @@ const config: NuxtConfig = {
   },
   modules: ['@vesp/frontend'],
   vesp: {
+    // @vesp/frontend сам installModule('@nuxtjs/i18n', vesp.i18n) — нужно передать локали ЗДЕСЬ,
+    // а не в top-level `i18n:` блоке (там Nuxt i18n не успеет переопределить vesp-defaults).
+    // По дефолту vesp: {defaultLocale: 'en', strategy: 'no_prefix', autoscan locales} — даёт 3 локали из lexicons/*.
+    i18n: {
+      strategy: 'no_prefix',
+      defaultLocale: locales[0].code,
+      langDir: 'lexicons',
+      locales,
+      compilation: {strictMessage: false},
+      detectBrowserLanguage: false,
+    },
     icons: {
       solid: [
         'user', 'power-off', 'globe', 'filter', 'pause', 'play', 'upload', 'question', 'image', 'video', 'file',
