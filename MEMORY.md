@@ -69,6 +69,16 @@
   - **Когда брать S3:** как только Михаил пришлёт первые видео (тогда же — точка для платёжа за S3). До этого момента — медиа в локальном `upload/`, бэкапы только B2.
   - **Распределение:** разные проекты (feelyoga, momarus, petparking) делят один S3-bucket пространством, но изолированы префиксами / отдельными bucket'ами.
 
+## Monitoring (2026-05-22)
+- **Blackbox probe** для https://filippov.yoga/ через `monitoring-blackbox` (`prom/blackbox-exporter:v0.25.0`) на VPS Vaibkod1
+- Конфиг infra (не в репо feelyoga): `/opt/infra/monitoring/`
+  - `blackbox/blackbox.yml` — модуль http_2xx (валидные статусы 200/301/302, fail_if_not_ssl, follow_redirects)
+  - `prometheus/prometheus.yml` — job `blackbox-http` с relabel-magic, target `https://filippov.yoga/` labels `project=feelyoga`
+  - `prometheus/alerts.yml` группа `blackbox`: `SiteDown` (probe_success=0 2m, critical), `SiteSlow` (>5s 5m, warning), `SiteCertExpiringSoon` (<14d, warning), `SiteCertExpired` (critical)
+- Alertmanager → Telegram bot уже работает (общий monitoring stack)
+- При появлении новых проектов (petparking-app домен и т.п.) — добавлять targets в `blackbox-http` job в prometheus.yml + reload
+- **Reload Prometheus без рестарта:** `docker compose exec prometheus wget -qO- --post-data='' http://localhost:9090/-/reload`
+
 ## ФЗ-152 / Sentry / CI (2026-05-22)
 - **GlitchTip self-hosted** живёт на самом VPS Vaibkod1 (`errors.infra.vaibkod.online` → 5.129.240.144). Не на debianOCR. 4 контейнера: `glitchtip-{web,worker,postgres,redis}`. Данные не покидают тот же VPS, что и БД FeelYoga → ФЗ-152 OK.
 - **Sentry PHP SDK** установлен в overlay (`deploy/customizations/core/bootstrap.php` + composer `sentry/sentry ^4.27`). PII принудительно `false`, query/cookies/headers вырезаются в `before_send`. Smoke-test пройден, event прилетает в GlitchTip.
