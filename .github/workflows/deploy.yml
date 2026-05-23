@@ -159,6 +159,12 @@ jobs:
             echo "==> applying core overlay"
             tar -xzf /tmp/feelyoga-core.tar.gz -C core/
             rm -f /tmp/feelyoga-core.tar.gz
+            # Перегенерируем composer autoload — без этого новые классы
+            # в overlay (новые контроллеры, сервисы) могут не подхватиться,
+            # потому что vendor/composer/autoload_psr4.php кешируется при
+            # composer install в image (не пересоздаётся при cp файлов).
+            echo "==> composer dump-autoload"
+            docker compose exec -T php-fpm composer dump-autoload --working-dir=/vesp/core --classmap-authoritative --no-interaction 2>&1 | tail -3
           fi
 
           # --- restart ---
