@@ -16,7 +16,11 @@
         </BCol>
         <BCol md="6" :class="middleClasses">
           <AppPages position="footer" />
-          <AppLanguage v-if="locales.length > 1" />
+          <!-- AppLanguage убран: аудитория русскоязычная.
+               Несмотря на vesp.i18n + nuxt.config.i18n с одной локалью —
+               @vesp/frontend всё равно регистрирует 3 (автоscan lexicons,
+               не удаётся отключить через config). Простейший фикс — спрятать
+               компонент-переключатель целиком. -->
         </BCol>
       </BRow>
     </BContainer>
