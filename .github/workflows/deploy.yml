@@ -19,6 +19,10 @@ env:
   NODE_VERSION: '24'
   SITE_URL: https://filippov.yoga
   VPS_PROJECT_DIR: /opt/projects/feelyoga
+  # Only Russian — аудитория Михаила русскоязычная. Запекается в bundle:
+  # при `LOCALES=ru` Nuxt i18n собирает только ru-локаль, переключатель в footer
+  # не показывается (locales.length > 1 false), chunks для en/de не генерируются.
+  LOCALES: ru
 
 concurrency:
   group: deploy-prod
@@ -81,6 +85,7 @@ jobs:
           SITE_URL=${SITE_URL}
           NUXT_PUBLIC_SITE_URL=${SITE_URL}
           NODE_PORT=3000
+          LOCALES=${LOCALES}
           NUXT_PUBLIC_SENTRY_DSN=${NUXT_PUBLIC_SENTRY_DSN}
           NUXT_PUBLIC_SENTRY_ENVIRONMENT=production
           NUXT_PUBLIC_YANDEX_CAPTCHA_SITE_KEY=${NUXT_PUBLIC_YANDEX_CAPTCHA_SITE_KEY}
