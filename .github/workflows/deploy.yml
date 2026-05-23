@@ -153,7 +153,8 @@ jobs:
         run: |
           ssh -i ~/.ssh/deploy_key "${VPS_USER}@${VPS_HOST}" \
             "PROJECT_DIR='${VPS_PROJECT_DIR}' SITE_URL='${SITE_URL}' HAS_CORE='${HAS_CORE:-0}' bash -s" <<'REMOTE'
-          set -euo pipefail
+          # -x = логировать каждую команду в CI output (для debug rollback'ов)
+          set -euxo pipefail
           cd "$PROJECT_DIR"
 
           # --- frontend (.output) ---
@@ -178,15 +179,26 @@ jobs:
           fi
 
           # --- restart ---
-          echo "==> restart containers"
-          docker compose restart node
+          # IMPORTANT: используем `up -d --force-recreate` вместо `restart`.
+          # `docker compose restart` с bind-mount volumes (наш кейс — frontend:/vesp/frontend)
+          # с docker compose v2.20+ имеет известный bug: команда возвращает exit 0,
+          # но процесс в контейнере фактически НЕ перечитывает файлы
+          # (старые file descriptors на исходные inode остаются открытыми).
+          # `up -d --force-recreate` гарантированно убивает контейнер и создаёт новый.
+          # Прецедент: 7+ CI runs прошли как success, а node всё это время работал
+          # на старом .output, потому что restart молча не сработал.
+          echo "==> recreate containers (force)"
+          docker compose up -d --force-recreate node
           if [ "$HAS_CORE" = "1" ]; then
-            docker compose restart php-fpm
+            docker compose up -d --force-recreate php-fpm
           fi
+          echo "node started at: $(docker inspect feelyoga-node-1 --format '{{.State.StartedAt}}')"
 
           # --- healthcheck ---
+          # 15 попыток × 2 сек = 30 сек. Nuxt SSR cold start обычно 5-10 сек,
+          # но force-recreate тяжелее чем restart (нужно создать новый контейнер).
           echo "==> healthcheck"
-          for i in 1 2 3 4 5 6 7 8 9 10; do
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
             sleep 2
             code=$(curl -sS -o /dev/null -w '%{http_code}' "$SITE_URL" || echo 000)
             if [ "$code" = "200" ]; then
@@ -195,10 +207,10 @@ jobs:
             fi
             echo "attempt $i: $code, waiting..."
           done
-          echo "FAIL: $SITE_URL не отвечает 200 за 20 сек, rollback"
+          echo "FAIL: $SITE_URL не отвечает 200 за 30 сек, rollback"
           rm -rf frontend/.output
           [ -d frontend/.output.prev ] && mv frontend/.output.prev frontend/.output
-          docker compose restart node
+          docker compose up -d --force-recreate node
           exit 1
           REMOTE
 
