@@ -61,6 +61,24 @@
 - Двухрежимный install (prebuilt/build), 4 фазы, 9 pitfalls, шаблон-проект `KondrashovDenis/feelyoga`
 - Применять при переезде на прод-Timeweb для Михаила или для других проектов Дениса
 
+## Решения от 2026-05-22
+- **Email-форвард `info@filippov.yoga` + `admin@filippov.yoga`:** `info@` → `holod111@yandex.ru` (Михаил, личная) + копия на `admin@filippov.yoga` (Денис). `admin@filippov.yoga` — публикуется на сайте как контактный, существует в VK Workspace, форвардится на `denciaopin@gmail.com`. Поток входящих от пользователей будет редким — Михаил основную коммуникацию ведёт в соцсетях.
+- **Хранилище медиа и бэкапы — двухуровневая стратегия:**
+  - **S3 в РФ** (Timeweb S3 / Selectel) — основное хранилище медиа для FeelYoga (видео Михаила), Момарус (фото картин), ПетПаркинг (фото/видео животных). Туда же — горячие бэкапы БД для быстрого восстановления (минуты-часы). Локация РФ → ФЗ-152 OK.
+  - **B2 (Backblaze, не РФ)** — disaster recovery: полный краш VPS Timeweb / уход провайдера. Это **резервная копия**, не активная обработка → формально под ФЗ-152 это техническое резервирование, не передача персданных за рубеж; риск низкий.
+  - **Когда брать S3:** как только Михаил пришлёт первые видео (тогда же — точка для платёжа за S3). До этого момента — медиа в локальном `upload/`, бэкапы только B2.
+  - **Распределение:** разные проекты (feelyoga, momarus, petparking) делят один S3-bucket пространством, но изолированы префиксами / отдельными bucket'ами.
+
+## ФЗ-152 / Sentry / CI (2026-05-22)
+- **GlitchTip self-hosted** живёт на самом VPS Vaibkod1 (`errors.infra.vaibkod.online` → 5.129.240.144). Не на debianOCR. 4 контейнера: `glitchtip-{web,worker,postgres,redis}`. Данные не покидают тот же VPS, что и БД FeelYoga → ФЗ-152 OK.
+- **Sentry PHP SDK** установлен в overlay (`deploy/customizations/core/bootstrap.php` + composer `sentry/sentry ^4.27`). PII принудительно `false`, query/cookies/headers вырезаются в `before_send`. Smoke-test пройден, event прилетает в GlitchTip.
+- **Sentry Nuxt SDK** — `@sentry/browser` подгружается в CI (`npm install --no-save @sentry/browser@^8.40.0`) + overlay `plugins/sentry.client.ts`. Overlay nuxt.config.ts добавляет `runtimeConfig.public.SENTRY_*`. Активен после первого CI deploy.
+- **GitHub Actions CI/CD** — `.github/workflows/deploy.yml`. Триггер: push в `main` с правками `deploy/customizations/**` или сам workflow. Шаги: clone upstream@ORBITA_REF=5526daa → apply overlay → patch i18n register_agree (sed) → `npm ci + sentry browser + nuxt build` → tarball → scp на VPS → atomic swap `.output` → restart node/php-fpm → healthcheck с rollback.
+- **GH Secrets для CI:** `VPS_SSH_KEY` (приватный ed25519, забрать через `ssh vaibkod-vps "cat ~/.ssh/github_feelyoga"`), `VPS_HOST=5.129.240.144`, `VPS_USER=deploy`. Pub-часть ключа уже добавлена в `/home/deploy/.ssh/authorized_keys` на VPS.
+- **Privacy policy** — `app_pages` id=4, alias=privacy. Доступна по `/pages/privacy` (200 OK) и `/api/web/pages/privacy`. Текст заготовлен под ФЗ-152, placeholders `[ФИО]`, `[ОГРНИП]`, `[ИНН]`, `[email]` Михаил заполнит когда даст реквизиты ИП.
+- **Чекбокс согласия при регистрации** — активирован через `REGISTER_USER_AGREEMENT=/pages/privacy` в `.env`. UI чекбокс уже встроен в `frontend/src/components/app/login.vue` upstream (через `v-if="userAgreement"`). Серверный гард `Register::post()` блокирует POST без `agree=true`. Текст под ФЗ-152 («Я даю согласие…») придёт после первого CI build (sed-патч в workflow).
+- **Юридический трек до запуска платежей** (не блокирует разработку): договор оператор↔обработчик между ИП Михаила (оператор) и Денисом (обработчик/владелец VPS), либо переоформление аккаунта Timeweb на Михаила. Уведомление в РКН от ИП. См. handoff `2026-05-20` для контекста.
+
 ## Состояние deploy (2026-05-15, конец дня)
 - **Dev-инстанс Orbita:** https://feelyoga-dev.vaibkod.online/ — 200 OK, locale=ru
   - Кастомизация применена: navbar=`filippov.yoga` (Manrope 200), widgets/author=`filippov.yoga`, footer=`Разработка сайта vaibkod.ru`, убран "Сделано на Орбите", шрифт Manrope, акцент шалфея `#6b8e6b`

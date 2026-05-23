@@ -1,0 +1,185 @@
+name: Build & Deploy
+
+# Триггеры:
+#   push в main с правками в overlay (frontend/PHP) или самого workflow
+#   workflow_dispatch — ручной запуск с UI GitHub (Actions → Run workflow)
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'deploy/customizations/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+# Pin upstream Orbita и Node — менять при апгрейде.
+# SITE_URL прибивается в build для корректного og:image (см. backlog #6).
+env:
+  ORBITA_REPO: bezumkin/orbita
+  ORBITA_REF: 5526daa
+  NODE_VERSION: '24'
+  SITE_URL: https://filippov.yoga
+  VPS_PROJECT_DIR: /opt/projects/feelyoga
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Checkout overlay repo
+        uses: actions/checkout@v4
+        with:
+          path: overlay
+
+      - name: Clone Orbita upstream @ ${{ env.ORBITA_REF }}
+        run: |
+          git clone --no-tags https://github.com/${ORBITA_REPO}.git upstream
+          cd upstream
+          git checkout "${ORBITA_REF}"
+          git log -1 --oneline
+
+      - name: Apply overlay (frontend + core)
+        run: |
+          if [ -d overlay/deploy/customizations/frontend ]; then
+            echo "==> applying frontend overlay"
+            cp -rv overlay/deploy/customizations/frontend/. upstream/frontend/
+          fi
+          if [ -d overlay/deploy/customizations/core ]; then
+            echo "==> applying core overlay"
+            cp -rv overlay/deploy/customizations/core/. upstream/core/
+          fi
+
+      - name: Patch i18n strings (ФЗ-152 wording)
+        working-directory: upstream/frontend
+        run: |
+          # Согласие на регистрацию — формулировка под ФЗ-152.
+          # upstream-текст не подходит юридически ("условия соглашения" ≠ согласие на обработку).
+          sed -i "s|Я принимаю <a href=\"{link}\" target=\"_blank\">условия пользовательского соглашения</a>|Я даю согласие на обработку моих персональных данных в соответствии с <a href=\"{link}\" target=\"_blank\">Политикой обработки персональных данных</a>|" i18n/lexicons/ru.js
+          grep "register_agree" i18n/lexicons/ru.js | head -1
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: upstream/frontend/package-lock.json
+
+      - name: Prepare build-time .env
+        working-directory: upstream
+        run: |
+          # Минимальный .env для nuxt build — только то, что прибивается в bundle.
+          # Runtime env (DB, SMTP, секреты) подхватываются на VPS из реального .env.
+          cat > .env <<EOF
+          SITE_URL=${SITE_URL}
+          NUXT_PUBLIC_SITE_URL=${SITE_URL}
+          NODE_PORT=3000
+          EOF
+
+      - name: Install deps + Sentry browser SDK & build Nuxt
+        working-directory: upstream/frontend
+        run: |
+          npm ci --no-audit --no-fund
+          # Sentry/GlitchTip browser SDK — добавляется поверх upstream lock'а,
+          # plugins/sentry.client.ts из overlay использует @sentry/browser.
+          npm install --no-audit --no-fund --no-save @sentry/browser@^8.40.0
+          npm run build
+
+      - name: Package .output → tarball
+        working-directory: upstream/frontend
+        run: |
+          tar -czf /tmp/feelyoga-output.tar.gz .output
+          ls -lh /tmp/feelyoga-output.tar.gz
+
+      - name: Package core overlay → tarball
+        run: |
+          # Только если core overlay есть в репо — иначе skip
+          if [ -d overlay/deploy/customizations/core ]; then
+            tar -czf /tmp/feelyoga-core.tar.gz -C overlay/deploy/customizations/core .
+            ls -lh /tmp/feelyoga-core.tar.gz
+            echo "HAS_CORE=1" >> $GITHUB_ENV
+          fi
+
+      - name: Setup SSH agent + known_hosts
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Upload artifacts to VPS
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          scp -i ~/.ssh/deploy_key /tmp/feelyoga-output.tar.gz \
+            "${VPS_USER}@${VPS_HOST}:/tmp/"
+          if [ "${HAS_CORE:-0}" = "1" ]; then
+            scp -i ~/.ssh/deploy_key /tmp/feelyoga-core.tar.gz \
+              "${VPS_USER}@${VPS_HOST}:/tmp/"
+          fi
+
+      - name: Deploy on VPS (atomic swap + restart + healthcheck)
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          ssh -i ~/.ssh/deploy_key "${VPS_USER}@${VPS_HOST}" \
+            "PROJECT_DIR='${VPS_PROJECT_DIR}' SITE_URL='${SITE_URL}' HAS_CORE='${HAS_CORE:-0}' bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd "$PROJECT_DIR"
+
+          # --- frontend (.output) ---
+          echo "==> rotate .output"
+          rm -rf frontend/.output.prev
+          [ -d frontend/.output ] && mv frontend/.output frontend/.output.prev || true
+          tar -xzf /tmp/feelyoga-output.tar.gz -C frontend/
+          rm -f /tmp/feelyoga-output.tar.gz
+          chown -R "$(id -u):$(id -g)" frontend/.output
+
+          # --- core overlay (PHP) ---
+          if [ "$HAS_CORE" = "1" ] && [ -f /tmp/feelyoga-core.tar.gz ]; then
+            echo "==> applying core overlay"
+            tar -xzf /tmp/feelyoga-core.tar.gz -C core/
+            rm -f /tmp/feelyoga-core.tar.gz
+          fi
+
+          # --- restart ---
+          echo "==> restart containers"
+          docker compose restart node
+          if [ "$HAS_CORE" = "1" ]; then
+            docker compose restart php-fpm
+          fi
+
+          # --- healthcheck ---
+          echo "==> healthcheck"
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            sleep 2
+            code=$(curl -sS -o /dev/null -w '%{http_code}' "$SITE_URL" || echo 000)
+            if [ "$code" = "200" ]; then
+              echo "OK: $SITE_URL → 200 (attempt $i)"
+              exit 0
+            fi
+            echo "attempt $i: $code, waiting..."
+          done
+          echo "FAIL: $SITE_URL не отвечает 200 за 20 сек, rollback"
+          rm -rf frontend/.output
+          [ -d frontend/.output.prev ] && mv frontend/.output.prev frontend/.output
+          docker compose restart node
+          exit 1
+          REMOTE
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## Deploy summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Orbita ref: \`${ORBITA_REF}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Site: ${SITE_URL}" >> $GITHUB_STEP_SUMMARY
+          echo "- Core overlay: ${HAS_CORE:-0}" >> $GITHUB_STEP_SUMMARY
