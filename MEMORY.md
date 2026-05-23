@@ -69,6 +69,20 @@
   - **Когда брать S3:** как только Михаил пришлёт первые видео (тогда же — точка для платёжа за S3). До этого момента — медиа в локальном `upload/`, бэкапы только B2.
   - **Распределение:** разные проекты (feelyoga, momarus, petparking) делят один S3-bucket пространством, но изолированы префиксами / отдельными bucket'ами.
 
+## Грабли captcha и CI/CD (2026-05-23)
+- **Nuxt 3 auto-import может silently не подхватить компонент.** Создал `components/feel/YandexCaptcha.vue` → должен резолвиться как `<FeelYandexCaptcha>` (как `<FeelHero>`/`<FeelCard>` рядом). В реальности — в built chunks **никакой ссылки на `FeelYandexCaptcha` не появилось**, компонент бандлился как module, но из login.vue на него никто не ссылался → onMounted не звался → script captcha.js не грузился → silent failure без warnings. **Лекарство:** явный `import YandexCaptcha from '~/components/feel/YandexCaptcha.vue'` в `<script setup>` + использование `<YandexCaptcha>` без префикса. Auto-import — недетерминирован, на overlay лучше не полагаться.
+- **`grep [^"]{0,20}` матчит ПУСТЫЕ значения.** Для diag-проверок «значение не пусто» использовать `[^"]+` (требует минимум 1 символ). Я грепнул `YANDEX_CAPTCHA_SITE_KEY:"[^"]{0,20}"`, получил матч на `:""`, sed'ом замазал в `:"<set>"` и доложил Денису что ключ установлен — фактически было пусто, час потеряли на debug.
+- **`NUXT_PUBLIC_*` build-time переменные обязательны в GH Secrets**, иначе client-bundle получит пустую строку. Они запекаются в bundle на этапе `nuxt build`, runtime `.env` на VPS их уже не подхватит. Workflow `Prepare build-time .env` step должен явно перечислять все нужные `NUXT_PUBLIC_*` через `${{ secrets.X }}`.
+- **Yandex SmartCaptcha в visible mode auto-passes** для пользователей с низким risk-score. Виджет загружается невидимо, callback с токеном приходит сразу, никакого checkbox юзер не видит. Это by design. Чекбокс «Я не робот» появляется только если Yandex решил «надо проверить» (suspicious IP, bot-like fingerprint). Не путать с invisible mode — в visible mode виджет _виден когда нужно_, в invisible — никогда (что в модалках с быстрым submit может не успеть отстрелять callback).
+
+## Email-шаблоны overlay (2026-05-23)
+- Default Orbita-шаблоны (`core/templates/*.tpl`) содержат лого Orbita и сухой текст — не подходят для бренда Filippov Yoga
+- **Overlay-подход:** `deploy/customizations/core/templates/{email,user-register}.tpl`
+  - `email.tpl` — общий wrapper, убран `<img logo>`, заменён на текстовую шапку Cormorant Garamond + footer с контактом `admin@filippov.yoga`
+  - `user-register.tpl` — приветствие + кнопка-CTA + fallback-ссылка + контакт. Три языка (RU/EN/DE) сохранены из upstream
+- Аналогично можно перекрыть `user-reset.tpl`, `subscription-paid.tpl`, `subscription-warn.tpl`, `subscription-cancelled.tpl`, `comment-new.tpl`, `comment-reply.tpl`, `topic-new.tpl` — все extends `email.tpl`, поэтому новый wrapper автоматом применится ко всем письмам, но текст контента остаётся upstream'ский. Перекрывать contention-блоки по мере необходимости.
+- **SMTP_USER_NAME** в `.env` — это From-display ("Имя отправителя") в почтовом клиенте. Менялся `FeelYoga` → `"Filippov Yoga"`. Кавычки нужны если в значении пробел.
+
 ## Monitoring (2026-05-22)
 - **Blackbox probe** для https://filippov.yoga/ через `monitoring-blackbox` (`prom/blackbox-exporter:v0.25.0`) на VPS Vaibkod1
 - Конфиг infra (не в репо feelyoga): `/opt/infra/monitoring/`
