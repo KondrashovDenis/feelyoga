@@ -1,0 +1,224 @@
+<?php
+
+namespace App\Models;
+
+use App\Services\PaymentService;
+use App\Services\Socket;
+use App\Services\SubscriptionPricing;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+/**
+ * OVERLAY upstream Subscription.
+ * Изменён: amountForPeriod применяет SubscriptionPricing discount-map
+ * (SUBSCRIPTION_DISCOUNTS env-переменная). Это покрывает renewal через charge()
+ * — иначе auto-billing считал бы по full price без скидки.
+ *
+ * @property int $id
+ * @property int $user_id
+ * @property int $level_id
+ * @property ?int $next_level_id
+ * @property string $service
+ * @property int $period
+ * @property ?int $next_period
+ * @property bool $active
+ * @property bool $cancelled
+ * @property ?string $remote_id
+ * @property Carbon $created_at
+ * @property Carbon $updated_at
+ * @property Carbon $warned_at
+ * @property Carbon $active_until
+ *
+ * @property-read User $user
+ * @property-read Level $level
+ * @property-read Level $nextLevel
+ * @property-read Payment $payments
+ */
+class Subscription extends Model
+{
+    protected $casts = [
+        'active' => 'bool',
+        'cancelled' => 'bool',
+        'warned_at' => 'datetime',
+        'active_until' => 'datetime',
+    ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function level(): BelongsTo
+    {
+        return $this->belongsTo(Level::class);
+    }
+
+    public function nextLevel(): BelongsTo
+    {
+        return $this->belongsTo(Level::class, 'next_level_id');
+    }
+
+    protected function getService(): PaymentService
+    {
+        $service = '\App\Services\Payments\\' . $this->service;
+
+        return new $service();
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function createPayment(int $period = 1, ?string $service = null): Payment
+    {
+        $from = ($this->active_until && !$this->nextLevel ? $this->active_until : Carbon::now())->toImmutable();
+
+        $payment = new Payment();
+        $payment->user_id = $this->user->id;
+        $payment->subscription_id = $this->id;
+        $payment->service = $service ?? $this->service;
+        $payment->amount = $this->amountForPeriod($period, $this->nextLevel);
+        $payment->metadata = [
+            'level' => $this->nextLevel->id ?? $this->level->id,
+            'title' => $this->nextLevel->title ?? $this->level->title,
+            'period' => $period,
+            'until' => (string)$from->addDays($period * 30),
+        ];
+
+        return $payment;
+    }
+
+    public function amountForPeriod($period, ?Level $level = null): float
+    {
+        // OVERLAY: применяем discount-multiplier из SUBSCRIPTION_DISCOUNTS env.
+        $basePrice = $level?->price ?? $this->level->price;
+        return SubscriptionPricing::calculate((float)$basePrice, (int)$period);
+    }
+
+    public function activate(Payment $payment): void
+    {
+        $now = Carbon::now()->toImmutable();
+
+        $period = $this->next_period ?? $this->period;
+        if (!$this->active_until || $this->active_until < $now || $this->next_level_id) {
+            $this->active_until = $now->addDays($period * 30);
+            if ($this->next_level_id) {
+                $this->level_id = $this->next_level_id;
+            }
+        } else {
+            $this->active_until = $payment->paid_at->addDays($period * 30);
+        }
+        $this->period = $period;
+        $this->active = true;
+        $this->cancelled = false;
+        $this->next_level_id = null;
+        $this->next_period = null;
+        $this->save();
+
+        $this->sendEmail('paid');
+        if (!(int)Carbon::now()->diffInDays($this->created_at)) {
+            Socket::send('subscription', [], 'levels');
+        }
+    }
+
+    public function freeUpgrade(Level $level, int $period): ?bool
+    {
+        $left = $this->paidAmountLeft();
+        $cost = $level->costForPeriod($period);
+        if ($left >= $cost) {
+            $perDay = $level->costPerDay();
+            $days = ceil($left / $perDay);
+            $activeUntil = Carbon::now()->addDays($days);
+
+            $this->level_id = $level->id;
+            $this->period = $period;
+            $this->active_until = $activeUntil;
+            $this->next_level_id = null;
+            $this->next_period = null;
+            $this->save();
+
+            $payment = $this->refresh()->createPayment($period, 'Internal');
+            $payment->amount = 0;
+            $payment->paid = true;
+            $payment->paid_at = $payment->created_at;
+            $payment->metadata['until'] = $activeUntil;
+            $payment->save();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    public function disable(): void
+    {
+        $this->active = false;
+        $this->save();
+
+        $this->sendEmail('cancelled');
+    }
+
+    public function paidAmountLeft(): float
+    {
+        $days = Carbon::now()->diffInDays($this->active_until);
+        if ($days < 1) {
+            return 0;
+        }
+
+        return round($this->level->costPerDay() * $days, 2);
+    }
+
+    public function charge(): ?Payment
+    {
+        $service = $this->getService();
+        if ($this->remote_id && !$this->cancelled && $service::SUBSCRIPTIONS) {
+            $payment = $this->createPayment($this->next_period ?? $this->period);
+            $payment->save();
+
+            if ($service->chargeSubscription($payment)) {
+                $payment->paid = true;
+                $payment->paid_at = time();
+                $payment->save();
+
+                return $payment;
+            }
+        }
+
+        return null;
+    }
+
+    public function warn(): bool
+    {
+        if (!$this->sendEmail('warn')) {
+            $this->timestamps = false;
+            $this->warned_at = date('Y-m-d H:i:s');
+            $this->save();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    protected function sendEmail(string $type): ?string
+    {
+        $lang = $this->user->lang ?? 'en';
+        $service = $this->getService();
+        $data = [
+            'lang' => $lang,
+            'user' => $this->user->toArray(),
+            'level' => $this->level->toArray(),
+            'subscription' => $this->toArray(),
+            'renew' => $service->canSubscribe(),
+        ];
+        $subject = getenv('EMAIL_SUBSCRIPTION_' . strtoupper($type) . '_' . strtoupper($lang));
+        if (empty($subject)) {
+            $subject = 'No Subject';
+        }
+
+        return $this->user->sendEmail($subject, 'subscription-' . $type, $data);
+    }
+}
