@@ -49,10 +49,17 @@
       <AppFooter class="border-top" />
       <AppPayment />
     </div>
+    <!-- Cookie consent banner — показывается при первом посещении, ФЗ-152 + ePrivacy.
+         После сохранения выбора (localStorage fy_cookie_consent_v1) больше не появляется.
+         ClientOnly: <Teleport to="body"> требует body, которого нет на SSR. -->
+    <ClientOnly>
+      <CookieConsent />
+    </ClientOnly>
   </div>
 </template>
 
 <script setup lang="ts">
+import CookieConsent from '~/components/feel/CookieConsent.vue'
 const {$settings, $variables, $image, $isMobile} = useNuxtApp()
 const router = useRouter()
 const route = useRoute()

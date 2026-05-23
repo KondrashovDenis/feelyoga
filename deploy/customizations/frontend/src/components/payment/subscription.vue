@@ -36,6 +36,16 @@
       </div>
     </div>
     <div class="mt-2 small text-muted" v-text="description" />
+
+    <!-- ФЗ-152 / ЗоЗПП: дисклеймер согласия с офертой при нажатии «Оплатить».
+         Implicit acceptance — стандарт РФ для платных подписок (как Tilda/Yookassa).
+         Регистрация уже требует явного согласия с ПД (REGISTER_USER_AGREEMENT). -->
+    <div class="mt-3 small text-muted offer-disclaimer">
+      Нажимая «Оплатить», вы соглашаетесь с
+      <NuxtLink to="/pages/offer" target="_blank" rel="noopener">публичной офертой</NuxtLink>
+      и
+      <NuxtLink to="/pages/refund" target="_blank" rel="noopener">политикой возврата</NuxtLink>.
+    </div>
   </div>
 </template>
 
