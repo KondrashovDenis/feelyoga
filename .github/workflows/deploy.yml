@@ -72,6 +72,7 @@ jobs:
         working-directory: upstream
         env:
           NUXT_PUBLIC_SENTRY_DSN: ${{ secrets.NUXT_PUBLIC_SENTRY_DSN }}
+          NUXT_PUBLIC_YANDEX_CAPTCHA_SITE_KEY: ${{ secrets.NUXT_PUBLIC_YANDEX_CAPTCHA_SITE_KEY }}
         run: |
           # Минимальный .env для nuxt build — только то, что прибивается в bundle.
           # Runtime env (DB, SMTP, секреты) подхватываются на VPS из реального .env.
@@ -82,9 +83,11 @@ jobs:
           NODE_PORT=3000
           NUXT_PUBLIC_SENTRY_DSN=${NUXT_PUBLIC_SENTRY_DSN}
           NUXT_PUBLIC_SENTRY_ENVIRONMENT=production
+          NUXT_PUBLIC_YANDEX_CAPTCHA_SITE_KEY=${NUXT_PUBLIC_YANDEX_CAPTCHA_SITE_KEY}
           EOF
-          # diag: показать что DSN не пуст (без значения)
-          if [ -n "$NUXT_PUBLIC_SENTRY_DSN" ]; then echo "SENTRY DSN: configured"; else echo "SENTRY DSN: EMPTY (set NUXT_PUBLIC_SENTRY_DSN secret)"; fi
+          # diag: показать какие public ENV не пусты (без значений)
+          [ -n "$NUXT_PUBLIC_SENTRY_DSN" ] && echo "SENTRY DSN: configured" || echo "SENTRY DSN: EMPTY"
+          [ -n "$NUXT_PUBLIC_YANDEX_CAPTCHA_SITE_KEY" ] && echo "YANDEX CAPTCHA: configured" || echo "YANDEX CAPTCHA: EMPTY (set NUXT_PUBLIC_YANDEX_CAPTCHA_SITE_KEY secret)"
 
       - name: Install deps + Sentry browser SDK & build Nuxt
         working-directory: upstream/frontend

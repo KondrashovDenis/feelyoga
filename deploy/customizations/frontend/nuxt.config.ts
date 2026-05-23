@@ -62,6 +62,8 @@ const config: NuxtConfig = {
       SENTRY_DSN: process.env.NUXT_PUBLIC_SENTRY_DSN || '',
       SENTRY_ENVIRONMENT: process.env.NUXT_PUBLIC_SENTRY_ENVIRONMENT || process.env.SENTRY_ENVIRONMENT || 'production',
       SENTRY_RELEASE: process.env.NUXT_PUBLIC_SENTRY_RELEASE || '',
+      // --- Yandex SmartCaptcha (см. components/feel/YandexCaptcha.vue) ---
+      YANDEX_CAPTCHA_SITE_KEY: process.env.NUXT_PUBLIC_YANDEX_CAPTCHA_SITE_KEY || '',
     },
   },
   app: {
