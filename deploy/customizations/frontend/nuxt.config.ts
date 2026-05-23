@@ -6,12 +6,12 @@
 
 import type {NuxtConfig} from '@nuxt/schema'
 
-const enabledLocales = (process.env.LOCALES || 'ru,en,de').split(',')
+// OVERLAY: only Russian. Hardcoded — env LOCALES почему-то не подхватывалась
+// в build на CI runner. Аудитория Михаила русскоязычная, переключатель не нужен,
+// chunks для en/de не должны собираться (экономия диска + чистый footer).
 const locales = [
   {code: 'ru', name: 'Русский', file: 'ru.js', language: 'ru-RU'},
-  {code: 'en', name: 'English', file: 'en.js', language: 'en-GB'},
-  {code: 'de', name: 'Deutsch', file: 'de.js', language: 'de-DE'},
-].filter((i) => enabledLocales.includes(i.code))
+]
 
 const config: NuxtConfig = {
   telemetry: false,
