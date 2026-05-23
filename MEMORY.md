@@ -84,6 +84,49 @@
 - Аналогично можно перекрыть `user-reset.tpl`, `subscription-paid.tpl`, `subscription-warn.tpl`, `subscription-cancelled.tpl`, `comment-new.tpl`, `comment-reply.tpl`, `topic-new.tpl` — все extends `email.tpl`, поэтому новый wrapper автоматом применится ко всем письмам, но текст контента остаётся upstream'ский. Перекрывать contention-блоки по мере необходимости.
 - **SMTP_USER_NAME** в `.env` — это From-display ("Имя отправителя") в почтовом клиенте. Менялся `FeelYoga` → `"Filippov Yoga"`. Кавычки нужны если в значении пробел.
 
+## Tbank эквайринг (2026-05-23)
+
+**Статус:** инфраструктура готова, ждём тестовых ключей от Михаила → smoke-test → боевые ключи.
+
+**Что готово в коде:**
+- `core/src/Services/Payments/Tbank.php` upstream — полная интеграция `securepay.tinkoff.ru/v2/` (Init, GetState), поддержка рекуррентов (`SUBSCRIPTIONS=true`), фискальный чек ФЗ-54 (Email, Taxation, Items)
+- `deploy/customizations/core/src/Controllers/Web/Payments/Tbank.php` — наш webhook handler, отвечает «OK» на POST от Tbank, дёргает `Payment::checkStatus()` (pull через GetState API, не доверяет body)
+- `deploy/customizations/core/routes.php` overlay — регистрирует `POST /api/web/payment/tbank`, **вне группы Cache middleware**
+- `.env.example` — полный блок `PAYMENT_TBANK_*` с комментариями где брать ключи
+
+**Получение ключей у Михаила (порядок):**
+1. ЛК Т-Банка Бизнес → Эквайринг → Интернет-эквайринг → создать магазин «filippov.yoga»
+2. Вкладка «Реквизиты» магазина: `TerminalKey` (12 цифр) + `Password`
+3. Тестовые ключи выдаются сразу. Боевые — после прохождения тестов + модерации Т-Банком (~3-5 рабочих дней)
+4. Настройки уведомлений магазина (notification URL):
+   - URL: `https://filippov.yoga/api/web/payment/tbank`
+   - Метод: POST, формат JSON, версия v2
+
+**Тестовый режим:**
+```env
+PAYMENT_TBANK_ENDPOINT=https://rest-api-test.tinkoff.ru/v2/
+PAYMENT_TBANK_TERMINAL=<тестовый_terminal>
+PAYMENT_TBANK_PASSWORD=<тестовый_password>
+```
+Тестовые карты Т-Банка: https://www.tbank.ru/kassa/dev/payments/#section/Test-cards
+- `4300 0000 0000 0777` — success
+- `5000 0000 0000 0009` — 3DS challenge
+- `4000 0000 0000 0002` — decline
+
+**Боевой режим:** `PAYMENT_TBANK_ENDPOINT=` (пусто), `PAYMENT_TBANK_TERMINAL` и `PAYMENT_TBANK_PASSWORD` — реальные ключи.
+
+**Smoke-test после внесения тестовых ключей:**
+1. Restart php-fpm (`docker compose restart php-fpm`)
+2. Под тестовым подписчиком → купить подписку 1 мес (2000 ₽)
+3. На странице оплаты ввести тестовую карту `4300000000000777`, дату, CVC любые
+4. После redirect → проверить в `/admin/payments` статус paid + `/admin/subscriptions/stat` активна
+5. Webhook должен прилететь, в Tbank ЛК → Магазины → История уведомлений — статус 200 OK
+6. После 2-3 успешных тестов отправить запрос в Т-Банк на боевые ключи
+
+**Ограничения:**
+- Webhook handler **не валидирует Token signature** Tbank'а — статус всегда берётся через GetState API (TLS канал = доверяем). Если в будущем понадобится строгая валидация — добавить SHA-256 проверку Token в `Web\Payments\Tbank::post`.
+- `PAYMENT_TIMEOUT_HOURS=6` (env, дефолт) — pending платёж после 6h auto-помечается failed.
+
 ## Monitoring (2026-05-22)
 - **Blackbox probe** для https://filippov.yoga/ через `monitoring-blackbox` (`prom/blackbox-exporter:v0.25.0`) на VPS Vaibkod1
 - Конфиг infra (не в репо feelyoga): `/opt/infra/monitoring/`
