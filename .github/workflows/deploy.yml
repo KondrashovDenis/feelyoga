@@ -57,13 +57,18 @@ jobs:
             cp -rv overlay/deploy/customizations/core/. upstream/core/
           fi
 
-      - name: Patch i18n strings (ФЗ-152 wording)
+      - name: Patch i18n strings (ФЗ-152 wording) + drop non-RU locales
         working-directory: upstream/frontend
         run: |
           # Согласие на регистрацию — формулировка под ФЗ-152.
           # upstream-текст не подходит юридически ("условия соглашения" ≠ согласие на обработку).
           sed -i "s|Я принимаю <a href=\"{link}\" target=\"_blank\">условия пользовательского соглашения</a>|Я даю согласие на обработку моих персональных данных в соответствии с <a href=\"{link}\" target=\"_blank\">Политикой обработки персональных данных</a>|" i18n/lexicons/ru.js
           grep "register_agree" i18n/lexicons/ru.js | head -1
+          # Удаляем не-RU локали — Nuxt i18n v9+ автосканит langDir и добавляет
+          # все найденные файлы как локали, игнорируя locales[] в config.
+          # Аудитория Михаила русскоязычная, переключатель в footer не нужен.
+          rm -f i18n/lexicons/en.js i18n/lexicons/de.js i18n/lexicons/fr.js i18n/lexicons/nl.js
+          ls i18n/lexicons/
 
       - name: Setup Node ${{ env.NODE_VERSION }}
         uses: actions/setup-node@v4
