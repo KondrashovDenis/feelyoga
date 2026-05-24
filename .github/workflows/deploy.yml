@@ -178,13 +178,18 @@ jobs:
             # в overlay (новые контроллеры, сервисы) могут не подхватиться,
             # потому что vendor/composer/autoload_psr4.php кешируется при
             # composer install в image (не пересоздаётся при cp файлов).
-            # ВАЖНО: БЕЗ `| tail -N` под set -o pipefail!
-            # composer пишет долгий output, tail закрывает stdin раньше, composer
-            # получает SIGPIPE (exit 141), pipefail → exit script. Это валило
-            # деплой между dump-autoload и recreate, и все последующие
-            # docker compose up/restart не выполнялись (грабли #21).
+            #
+            # ВАЖНО: используем `docker exec` НАПРЯМУЮ, не `docker compose exec`!
+            # `docker compose exec -T` под set -e в compose v2 возвращает
+            # non-zero exit даже при успешном завершении команды внутри
+            # (race condition с TTY handling) — это валило весь deploy script
+            # ПОСЛЕ dump-autoload (грабли #21, симптом — recreate node никогда
+            # не выполнялся, 7+ CI runs прошли как success на bullshit
+            # потому что healthcheck старого node = 200 OK).
+            #
+            # `docker exec <container_name>` стабильнее по exit codes.
             echo "==> composer dump-autoload"
-            docker compose exec -T php-fpm composer dump-autoload --working-dir=/vesp/core --classmap-authoritative --no-interaction 2>&1
+            docker exec feelyoga-php-fpm-1 composer dump-autoload --working-dir=/vesp/core --classmap-authoritative --no-interaction 2>&1
           fi
 
           # --- restart ---
