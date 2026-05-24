@@ -127,6 +127,33 @@ PAYMENT_TBANK_PASSWORD=<тестовый_password>
 - Webhook handler **не валидирует Token signature** Tbank'а — статус всегда берётся через GetState API (TLS канал = доверяем). Если в будущем понадобится строгая валидация — добавить SHA-256 проверку Token в `Web\Payments\Tbank::post`.
 - `PAYMENT_TIMEOUT_HOURS=6` (env, дефолт) — pending платёж после 6h auto-помечается failed.
 
+## CI silent failure: docker compose exec exit-code race (2026-05-24)
+
+**Симптом:** 8+ CI deploys прошли как success, .output на VPS обновлялся, но **node контейнер не перезапускался ни разу** в течение суток. Все наши последние изменения (Sentry filter, vesp.i18n, AppLanguage hide, и т.д.) **не активировались на проде** — node продолжал работать на закешированных модулях со старого старта.
+
+**Root cause** (найден через tee-trace в `/tmp/feelyoga-deploy.log`):
+```bash
+docker compose exec -T php-fpm composer dump-autoload ...
+# команда успешно отрабатывает, output: "Generated... 5743 classes"
+# НО docker compose exec возвращает non-zero exit code
+# → set -e останавливает скрипт
+# → docker compose up -d --force-recreate node после этого НЕ выполняется
+# → healthcheck loop тоже скипается
+# → script завершается ExitCode=0 (от docker compose exec? нет, от чего-то ещё)
+# CI считает успех потому что старый node ещё отвечает 200 на healthcheck (если бы дошёл)
+```
+
+Воспроизводилось локально через `ssh deploy@localhost bash -s <<EOF; docker compose exec -T ... ; echo "after"; EOF` — "after" никогда не печаталось.
+
+**Лечение:** `docker exec <container_name>` напрямую вместо `docker compose exec -T <service>`. Без compose-обёртки exit code приходит корректно.
+
+**Lessons (для всех CI deploy скриптов):**
+1. **Никогда не использовать `docker compose exec -T` под `set -e`** в CI скриптах. Заменять на `docker exec <container_name>`.
+2. **Всегда дублировать deploy trace в файл на VPS** (`exec > >(tee -a /tmp/deploy.log) 2>&1` после открытия SSH heredoc) — GitHub Actions UI логи за auth-wall, а tee позволяет читать через MCP без захода в браузер.
+3. **`set -x` обязателен** в deploy скриптах — иначе silent failure без stacktrace.
+4. **Healthcheck должен реально проверять что изменилось**, не просто HTTP 200. Например `curl ... | grep -q 'наш_новый_маркер'`. Иначе старая работающая версия маскирует rollback'и.
+5. **Грабли SIGPIPE: `cmd | tail -N` под `pipefail`** — отдельная гипотеза, но в нашем случае оказалась ложным следом, реальный exit non-zero приходил от самого `compose exec`.
+
 ## Monitoring (2026-05-22)
 - **Blackbox probe** для https://filippov.yoga/ через `monitoring-blackbox` (`prom/blackbox-exporter:v0.25.0`) на VPS Vaibkod1
 - Конфиг infra (не в репо feelyoga): `/opt/infra/monitoring/`
