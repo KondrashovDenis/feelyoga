@@ -154,6 +154,10 @@ jobs:
           ssh -i ~/.ssh/deploy_key "${VPS_USER}@${VPS_HOST}" \
             "PROJECT_DIR='${VPS_PROJECT_DIR}' SITE_URL='${SITE_URL}' HAS_CORE='${HAS_CORE:-0}' bash -s" <<'REMOTE'
           # -x = логировать каждую команду в CI output (для debug rollback'ов)
+          # Также пишем trace на VPS — чтобы можно было прочитать /tmp/feelyoga-deploy.log
+          # без авторизации в GitHub Actions UI (логи там за auth-wall).
+          exec > >(tee -a /tmp/feelyoga-deploy.log) 2>&1
+          echo "===== DEPLOY START $(date -u) ====="
           set -euxo pipefail
           cd "$PROJECT_DIR"
 
