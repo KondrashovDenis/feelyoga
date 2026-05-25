@@ -27,6 +27,10 @@ export default defineNuxtPlugin((nuxtApp) => {
       't is not a function',
       /can't access property.*this\.\$/i,
       /this\.\$ is undefined/i,
+      // 404 от /api/security/activate — пользователь кликнул welcome-ссылку
+      // повторно, reset_password уже сброшен после первой активации.
+      // Это expected behavior Orbita, обрабатывается в pages/user/confirm/.
+      /\/api\/security\/activate.*404/,
     ],
     beforeSend(event) {
       if (event.request?.url) {
