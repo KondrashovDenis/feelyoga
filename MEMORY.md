@@ -154,6 +154,41 @@ docker compose exec -T php-fpm composer dump-autoload ...
 4. **Healthcheck должен реально проверять что изменилось**, не просто HTTP 200. Например `curl ... | grep -q 'наш_новый_маркер'`. Иначе старая работающая версия маскирует rollback'и.
 5. **Грабли SIGPIPE: `cmd | tail -N` под `pipefail`** — отдельная гипотеза, но в нашем случае оказалась ложным следом, реальный exit non-zero приходил от самого `compose exec`.
 
+## Timeweb S3 (2026-05-28, готова инфра — ждём ключи)
+
+**Стратегия:** один bucket `vaibkod-secure` (приватный) шарится между momarus/feelyoga/petparking. Изоляция через префикс `S3_LOCATION=feelyoga/`. Public bucket `vaibkod-media` под Orbita **не подключаем** — все медиа Orbita отдаёт через свои backend-endpoint'ы (`/api/image/<uuid>`, `/api/video/<uuid>`), прямые S3 URL клиенту не нужны.
+
+**Что есть в Orbita из коробки:**
+- `core/src/Services/CloudStorage.php` — flysystem-aws-s3-v3 wrapper, единый bucket через env `S3_KEY/SECRET/ENDPOINT/BUCKET/REGION`
+- `getStreamLink()` — presigned URL для видео-стрима (TTL из `DOWNLOAD_MEDIA_FROM_S3_TIMEOUT`)
+- `getDownloadLink()` — presigned с `Content-Disposition: attachment`
+- `readRangeStream()` — для HLS-сегментов с Range-запросами
+- runtime-флаги `STREAM_MEDIA_FROM_S3`, `DOWNLOAD_MEDIA_FROM_S3` — переключают: backend проксирует / прямой presigned
+
+**Что добавили overlay'ем (`deploy/customizations/core/src/Services/CloudStorage.php`):**
+- Поддержка **`S3_LOCATION`** — префикс ключей внутри bucket. В upstream Orbita нет, и без него все 3 проекта пишут в корень bucket'а вперемешку. С `S3_LOCATION=feelyoga/` все Flysystem-операции автоматом получают префикс через 3-й аргумент `AwsS3V3Adapter`; прямые S3Client вызовы (download/stream/range) — через метод `prefixed()`.
+- При пустом `S3_LOCATION` поведение совпадает с upstream (для совместимости).
+
+**Параметры подключения Timeweb (из инфры Дениса):**
+- Endpoint: `https://s3.twcstorage.ru`
+- Region: `ru-1`
+- Bucket: `vaibkod-secure`
+- **`S3_OPTIONS={"use_path_style_endpoint":true}`** — Timeweb требует path-style (`endpoint/bucket/key`, не `bucket.endpoint/key`)
+- App user `vaibkod-secure-app` (общий для всех 3 проектов, ключи одинаковые у public+private app users)
+- CORS на bucket уже настроен Денисом — разрешены origins `filippov.yoga`, `momarus.ru`, `petparking.ru`, `localhost:3000`. Methods GET/POST/PUT/HEAD. Если для HLS-стрима потребуются Range-заголовки — попросить Дениса добавить `Content-Length`, `Content-Range`, `Accept-Ranges` в ExposeHeaders.
+
+**План активации (когда Михаил даст первые видео):**
+1. Денис передаёт `S3_KEY` + `S3_SECRET` (через ssh-канал, не в чат)
+2. В `.env` на VPS включить блок S3 (см. `.env.example`)
+3. `docker compose restart php-fpm`
+4. Smoke-test: загрузить картинку через `/admin/topics` → проверить что появилась в `vaibkod-secure/feelyoga/...`
+5. Миграция existing `upload/` (poster Михаила, обложка, тестовое видео) через `aws s3 cp --recursive upload/ s3://vaibkod-secure/feelyoga/ --endpoint-url https://s3.twcstorage.ru`
+
+**Грабли которые учли (из momarus prod-опыта Дениса):**
+- `path_style_endpoint` обязателен для Timeweb (иначе DNS-failure на `bucket.s3.twcstorage.ru`)
+- В Django был баг с `AWS_S3_CUSTOM_DOMAIN` перетирающим private storage — в Orbita нет custom_domain, irrelevant
+- Префикс location у Orbita нужен через overlay (django-storages даёт из коробки, у нас нет)
+
 ## Monitoring (2026-05-22)
 - **Blackbox probe** для https://filippov.yoga/ через `monitoring-blackbox` (`prom/blackbox-exporter:v0.25.0`) на VPS Vaibkod1
 - Конфиг infra (не в репо feelyoga): `/opt/infra/monitoring/`
