@@ -17,39 +17,47 @@
 <script setup lang="ts">
 /**
  * OVERLAY upstream pages/user/confirm/[username]/[code].vue
- * Изменено: 404 от /api/security/activate (повторный клик по welcome-ссылке,
- * reset_password уже сброшен в null после успешной активации) обрабатывается
- * без Nuxt error page — показываем дружелюбный экран «Аккаунт уже активен».
- * Также пропускаем error в Sentry с пометкой handled — не спамит Telegram alerts.
+ * 404 от /api/security/activate (повторный клик по welcome-ссылке, reset_password
+ * уже сброшен в null после первой активации) обрабатываем без Nuxt error page —
+ * показываем дружелюбный экран «Аккаунт уже активирован».
+ *
+ * BUG-RESOLVED: предыдущая версия имела `return` на top-level <script setup>,
+ * Vue compiler ругался "'return' outside of function" — нельзя ранний return
+ * в module-scope. Логика переделана через guard-флаг shouldRedirect.
  */
 const {params} = useRoute()
 const loading = ref(true)
 const alreadyActive = ref(false)
-const route = ref<{name: string}>({name: 'index'})
+const shouldRedirect = ref(false)
+const redirectTarget = ref<{name: string}>({name: 'index'})
 
 if (params.username && params.code) {
   try {
     const {token} = await usePost('security/activate', params)
     if (token) {
       await useAuth().setToken(token)
-      route.value = {name: 'user-profile'}
+      redirectTarget.value = {name: 'user-profile'}
+      shouldRedirect.value = true
     }
   } catch (e: any) {
     // 404 = пользователь уже активирован (reset_password=null после первого успеха)
-    if (e?.statusCode === 404 || e?.response?.status === 404) {
+    const status = e?.statusCode ?? e?.response?.status
+    if (status === 404) {
       alreadyActive.value = true
       loading.value = false
-      // На главную не редиректим — пусть юзер сам кликнет «Войти» либо «На главную»
-      return
+      // shouldRedirect остаётся false — onMounted редирект не сделает
+    } else {
+      // Другие ошибки — стандартное поведение Nuxt
+      throw e
     }
-    // Другие ошибки — стандартное поведение Nuxt
-    throw e
   }
 }
 
+// onMounted редиректит ТОЛЬКО при успешной активации.
+// Если попали в alreadyActive (404) — остаёмся на странице с дружелюбным сообщением.
 onMounted(() => {
-  if (!alreadyActive.value) {
-    navigateTo(route.value, {replace: true, redirectCode: 302})
+  if (shouldRedirect.value) {
+    navigateTo(redirectTarget.value, {replace: true, redirectCode: 302})
   }
 })
 </script>
