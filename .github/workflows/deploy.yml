@@ -82,10 +82,12 @@ jobs:
         env:
           NUXT_PUBLIC_SENTRY_DSN: ${{ secrets.NUXT_PUBLIC_SENTRY_DSN }}
           NUXT_PUBLIC_YANDEX_CAPTCHA_SITE_KEY: ${{ secrets.NUXT_PUBLIC_YANDEX_CAPTCHA_SITE_KEY }}
+          SHA: ${{ github.sha }}
         run: |
           # Минимальный .env для nuxt build — только то, что прибивается в bundle.
           # Runtime env (DB, SMTP, секреты) подхватываются на VPS из реального .env.
           # NUXT_PUBLIC_* должны быть здесь, иначе client-bundle получит пустые значения.
+          SHA_SHORT="${SHA:0:7}"
           cat > .env <<EOF
           SITE_URL=${SITE_URL}
           NUXT_PUBLIC_SITE_URL=${SITE_URL}
@@ -93,8 +95,11 @@ jobs:
           LOCALES=${LOCALES}
           NUXT_PUBLIC_SENTRY_DSN=${NUXT_PUBLIC_SENTRY_DSN}
           NUXT_PUBLIC_SENTRY_ENVIRONMENT=production
+          NUXT_PUBLIC_SENTRY_RELEASE=${SHA_SHORT}
+          NUXT_PUBLIC_DEPLOY_SHA=${SHA_SHORT}
           NUXT_PUBLIC_YANDEX_CAPTCHA_SITE_KEY=${NUXT_PUBLIC_YANDEX_CAPTCHA_SITE_KEY}
           EOF
+          echo "Build for release: ${SHA_SHORT}"
           # diag: показать какие public ENV не пусты (без значений)
           [ -n "$NUXT_PUBLIC_SENTRY_DSN" ] && echo "SENTRY DSN: configured" || echo "SENTRY DSN: EMPTY"
           [ -n "$NUXT_PUBLIC_YANDEX_CAPTCHA_SITE_KEY" ] && echo "YANDEX CAPTCHA: configured" || echo "YANDEX CAPTCHA: EMPTY (set NUXT_PUBLIC_YANDEX_CAPTCHA_SITE_KEY secret)"
@@ -150,9 +155,11 @@ jobs:
         env:
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
+          SHA: ${{ github.sha }}
         run: |
+          SHA_SHORT="${SHA:0:7}"
           ssh -i ~/.ssh/deploy_key "${VPS_USER}@${VPS_HOST}" \
-            "PROJECT_DIR='${VPS_PROJECT_DIR}' SITE_URL='${SITE_URL}' HAS_CORE='${HAS_CORE:-0}' bash -s" <<'REMOTE'
+            "PROJECT_DIR='${VPS_PROJECT_DIR}' SITE_URL='${SITE_URL}' HAS_CORE='${HAS_CORE:-0}' SHA='${SHA_SHORT}' bash -s" <<'REMOTE'
           # -x = логировать каждую команду в CI output (для отладки silent failures).
           # Дополнительно: tee в /tmp/feelyoga-deploy.log для чтения trace через MCP,
           # потому что GitHub Actions UI логи за auth-wall.
@@ -209,19 +216,21 @@ jobs:
           echo "node started at: $(docker inspect feelyoga-node-1 --format '{{.State.StartedAt}}')"
 
           # --- healthcheck ---
-          # 15 попыток × 2 сек = 30 сек. Nuxt SSR cold start обычно 5-10 сек,
-          # но force-recreate тяжелее чем restart (нужно создать новый контейнер).
-          echo "==> healthcheck"
+          # Проверка не просто HTTP 200, а что в HTML реально пришёл наш SHA.
+          # Иначе старая работающая версия маскирует silent rollback (грабли #21).
+          # 15 попыток × 2 сек = 30 сек. Nuxt SSR cold start обычно 5-10 сек.
+          echo "==> healthcheck (ищем SHA=$SHA в HTML)"
           for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
             sleep 2
+            html=$(curl -sS "$SITE_URL" 2>/dev/null || echo "")
             code=$(curl -sS -o /dev/null -w '%{http_code}' "$SITE_URL" || echo 000)
-            if [ "$code" = "200" ]; then
-              echo "OK: $SITE_URL → 200 (attempt $i)"
+            if [ "$code" = "200" ] && echo "$html" | grep -q "DEPLOY_SHA:\"$SHA\""; then
+              echo "OK: $SITE_URL → 200 + DEPLOY_SHA=$SHA matches (attempt $i)"
               exit 0
             fi
-            echo "attempt $i: $code, waiting..."
+            echo "attempt $i: HTTP=$code, sha_found=$(echo "$html" | grep -oc "DEPLOY_SHA:\"$SHA\""), waiting..."
           done
-          echo "FAIL: $SITE_URL не отвечает 200 за 30 сек, rollback"
+          echo "FAIL: $SITE_URL не отвечает 200 с SHA=$SHA за 30 сек, rollback"
           rm -rf frontend/.output
           [ -d frontend/.output.prev ] && mv frontend/.output.prev frontend/.output
           docker compose up -d --force-recreate node

@@ -64,6 +64,11 @@ const config: NuxtConfig = {
       SENTRY_RELEASE: process.env.NUXT_PUBLIC_SENTRY_RELEASE || '',
       // --- Yandex SmartCaptcha (см. components/feel/YandexCaptcha.vue) ---
       YANDEX_CAPTCHA_SITE_KEY: process.env.NUXT_PUBLIC_YANDEX_CAPTCHA_SITE_KEY || '',
+      // --- Маркер свежей сборки для CI healthcheck + Sentry release tracking ---
+      // SHA коммита запекается в HTML bundle; CI healthcheck делает curl + grep SHA
+      // чтобы убедиться что задеплоилась именно ОЖИДАЕМАЯ версия (а не старая
+      // работающая по ошибке). Также экспортится как SENTRY_RELEASE.
+      DEPLOY_SHA: process.env.NUXT_PUBLIC_DEPLOY_SHA || '',
     },
   },
   app: {
