@@ -1,7 +1,11 @@
 <template>
   <BOverlay :show="loading" opacity="0.5">
     <template v-if="!record">
-      <FeelHero :page="heroPageData" variant="simple" />
+      <FeelHero
+        :page="heroPageData"
+        :portrait-image="portraitUrl || undefined"
+        :variant="portraitUrl ? 'full' : 'simple'"
+      />
 
       <section v-if="restBlocks.length || canEdit" class="feel-section">
         <div class="feel-section__inner feel-content">
@@ -44,18 +48,20 @@ const record: Ref<undefined | VespPage> = ref()
 
 const canEdit = computed(() => $scope('pages/patch'))
 
-// Hero: h1 + первый paragraph как lead
-const allBlocks = computed<any[]>(() => page.value.content?.blocks || [])
-const headerIdx = computed(() => allBlocks.value.findIndex((b) => b.type === 'header' && b.data?.level === 1))
+// Первый image-блок → portrait в Hero, остальное идёт дальше как обычно
+const {portraitUrl, blocksWithoutPortrait} = usePagePortrait(page)
+
+// Hero: h1 + первый paragraph как lead (работаем над blocksWithoutPortrait)
+const headerIdx = computed(() => blocksWithoutPortrait.value.findIndex((b) => b.type === 'header' && b.data?.level === 1))
 const heroBlocks = computed<any[]>(() => {
   const arr: any[] = []
-  if (headerIdx.value > -1) arr.push(allBlocks.value[headerIdx.value])
+  if (headerIdx.value > -1) arr.push(blocksWithoutPortrait.value[headerIdx.value])
   else if (page.value.title) arr.push({id: 'h1', type: 'header', data: {text: page.value.title, level: 1}})
 
   // Первый параграф после header — это lead
   const afterHeader = headerIdx.value > -1
-    ? allBlocks.value.slice(headerIdx.value + 1)
-    : allBlocks.value
+    ? blocksWithoutPortrait.value.slice(headerIdx.value + 1)
+    : blocksWithoutPortrait.value
   const firstParagraph = afterHeader.find((b) => b.type === 'paragraph')
   if (firstParagraph) arr.push(firstParagraph)
   return arr
@@ -68,8 +74,8 @@ const heroPageData = computed(() => ({
 // Остальной контент (всё после Hero h1 + первого параграфа)
 const restBlocks = computed<any[]>(() => {
   const remaining = headerIdx.value > -1
-    ? allBlocks.value.toSpliced(headerIdx.value, 1)
-    : [...allBlocks.value]
+    ? blocksWithoutPortrait.value.toSpliced(headerIdx.value, 1)
+    : [...blocksWithoutPortrait.value]
   const firstParaIdx = remaining.findIndex((b) => b.type === 'paragraph')
   return firstParaIdx > -1 ? remaining.toSpliced(firstParaIdx, 1) : remaining
 })

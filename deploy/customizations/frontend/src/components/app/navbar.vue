@@ -20,14 +20,17 @@
           </BDropdownItem>
         </BNavItemDropdown>
 
-        <!-- Якоря на главной -->
-        <BNavItem :to="{name: 'index', hash: '#about'}">Обо мне</BNavItem>
-        <BNavItem :to="{name: 'index', hash: '#subscription'}">Подписка</BNavItem>
-
-        <!-- Кастомные страницы из admin (position=header или both, кроме home-hero/sub-intro/about) -->
+        <!-- Все страницы из admin с position=header|both. Управляется через /admin/pages.
+             Скрыты только служебные блоки главной (home-hero, subscription-intro) —
+             они не самостоятельные страницы, а контент для index.vue.
+             Для якорей на главной (например «Подписка» → /#subscription) —
+             external=1, link=/#subscription. -->
         <template v-for="page in extraPages" :key="page.id">
           <a v-if="page.external" :href="page.link" :target="page.blank ? '_blank' : '_self'" class="nav-link">
-            {{ page.name }}&nbsp;<sup><VespFa icon="external-link" size="sm" /></sup>
+            {{ page.name }}
+            <sup v-if="page.link && !page.link.startsWith('/') && !page.link.startsWith('#')">
+              <VespFa icon="external-link" size="sm" />
+            </sup>
           </a>
           <BNavItem v-else :to="{name: 'pages-alias', params: {alias: page.alias}}">
             {{ page.name }}
@@ -94,12 +97,13 @@ const colorIcon = computed(() => {
 const {data: catData} = await useCustomFetch('web/categories').catch(() => ({data: ref({rows: []})}))
 const categories = computed<any[]>(() => (catData?.value as any)?.rows?.filter((c: any) => c.active) || [])
 
-// Прочие страницы из админки (position=header/both), кроме наших скрытых из landing
-const HIDDEN_ALIASES = ['home-hero', 'subscription-intro', 'about']
+// Служебные блоки главной — не самостоятельные страницы, скрываем из навбара.
+// «about» сюда НЕ входит — его Денис может показывать/скрывать через position в admin.
+const HIDDEN_ALIASES = ['home-hero', 'subscription-intro']
 const extraPages = computed(() => {
-  return $pages.value.filter((p: any) =>
-    ['header', 'both'].includes(p.position) && !HIDDEN_ALIASES.includes(p.alias)
-  )
+  return $pages.value
+    .filter((p: any) => ['header', 'both'].includes(p.position) && !HIDDEN_ALIASES.includes(p.alias))
+    .sort((a: any, b: any) => (a.rank || 0) - (b.rank || 0))
 })
 
 function toggleSidebar() {

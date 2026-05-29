@@ -85,27 +85,32 @@ const subIntroPage = computed(() => subIntroResp.data?.value || null)
 const topics = computed<any[]>(() => (topicsResp.data?.value as any)?.rows || [])
 const levels = computed<any[]>(() => (levelsResp.data?.value as any)?.rows || [])
 
-const portraitImage = computed(() => {
+// Fallback на глобальный settings.poster если в странице нет image-блока
+const settingsPosterUrl = computed(() => {
   const poster = $settings.value.poster
-  if (!poster) return undefined
-  return $image(poster, {w: 720, h: 900, fit: 'crop'})
+  if (!poster) return null
+  return $image(poster, {w: 720, h: 900, fit: 'crop'}) || null
 })
 
-// about — отрезаем h1 в title, остальное в body
-const aboutBlocks = computed<any[]>(() => aboutPage.value?.content?.blocks || [])
-const aboutHeaderIdx = computed(() => aboutBlocks.value.findIndex((b) => b.type === 'header' && b.data?.level === 1))
+// Hero — приоритет: image-блок в home-hero → fallback settings.poster
+const {portraitUrl: heroPortraitUrl} = usePagePortrait(heroPage)
+const portraitImage = computed(() => heroPortraitUrl.value || settingsPosterUrl.value || undefined)
+
+// About — приоритет: image-блок в about → fallback settings.poster
+const {portraitUrl: aboutPortraitUrl, blocksWithoutPortrait: aboutBlocksClean} = usePagePortrait(aboutPage)
+const aboutHeaderIdx = computed(() => aboutBlocksClean.value.findIndex((b) => b.type === 'header' && b.data?.level === 1))
 const aboutTitle = computed(() => {
-  if (aboutHeaderIdx.value > -1) return aboutBlocks.value[aboutHeaderIdx.value].data.text
+  if (aboutHeaderIdx.value > -1) return aboutBlocksClean.value[aboutHeaderIdx.value].data.text
   return aboutPage.value?.title || ''
 })
 const aboutBody = computed(() => {
-  if (aboutHeaderIdx.value > -1) return aboutBlocks.value.toSpliced(aboutHeaderIdx.value, 1)
-  return aboutBlocks.value
+  if (aboutHeaderIdx.value > -1) return aboutBlocksClean.value.toSpliced(aboutHeaderIdx.value, 1)
+  return aboutBlocksClean.value
 })
 const aboutImgStyle = computed(() => {
-  const poster = $settings.value.poster
-  if (!poster) return {backgroundColor: 'var(--bs-tertiary-bg)'}
-  return {backgroundImage: `url('${$image(poster, {w: 720, h: 900, fit: 'crop'})}')`}
+  const url = aboutPortraitUrl.value || settingsPosterUrl.value
+  if (!url) return {backgroundColor: 'var(--bs-tertiary-bg)'}
+  return {backgroundImage: `url('${url}')`}
 })
 
 // subscription intro — h1 как title, остальное как lead
